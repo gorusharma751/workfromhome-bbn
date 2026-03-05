@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute, AdminRoute } from "@/components/ProtectedRoute";
 import BottomNav from "./components/BottomNav";
+import InstallBanner from "./components/InstallBanner";
 import TasksPage from "./pages/TasksPage";
 import ReferEarnPage from "./pages/ReferEarnPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
           <BottomNav />
+          <InstallBanner />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
