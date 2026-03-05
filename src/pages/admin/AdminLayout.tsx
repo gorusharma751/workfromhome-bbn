@@ -6,8 +6,10 @@ const navItems = [
   { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { path: "/admin/tasks", label: "Tasks", icon: ListTodo },
   { path: "/admin/submissions", label: "Submissions", icon: FileCheck },
-  { path: "/admin/referrals", label: "Referrals", icon: Users },
+  { path: "/admin/users", label: "Users", icon: Users },
+  { path: "/admin/referrals", label: "Referrals", icon: Settings },
   { path: "/admin/withdrawals", label: "Withdrawals", icon: Wallet },
+  { path: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 const AdminLayout = () => {
