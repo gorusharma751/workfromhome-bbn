@@ -19,6 +19,8 @@ import AdminTasks from "./pages/admin/AdminTasks";
 import AdminSubmissions from "./pages/admin/AdminSubmissions";
 import AdminReferrals from "./pages/admin/AdminReferrals";
 import AdminWithdrawals from "./pages/admin/AdminWithdrawals";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminSettings from "./pages/admin/AdminSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,8 +43,10 @@ const App = () => (
               <Route index element={<AdminDashboard />} />
               <Route path="tasks" element={<AdminTasks />} />
               <Route path="submissions" element={<AdminSubmissions />} />
+              <Route path="users" element={<AdminUsers />} />
               <Route path="referrals" element={<AdminReferrals />} />
               <Route path="withdrawals" element={<AdminWithdrawals />} />
+              <Route path="settings" element={<AdminSettings />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
