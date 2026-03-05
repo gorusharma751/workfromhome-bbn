@@ -1,16 +1,27 @@
 {
-  "name": "Work From Home",
-  "short_name": "WFH",
-  "description": "Complete tasks and earn money online",
+  "name": "Work From Home - Earn Money Online",
+  "short_name": "WFH Earn",
+  "description": "Complete tasks and earn money online. Post reviews, rate apps, and get paid instantly.",
   "start_url": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0f0a1f",
   "theme_color": "#7c3aed",
+  "categories": ["finance", "business"],
   "icons": [
     {
-      "src": "/favicon.ico",
-      "sizes": "64x64",
-      "type": "image/x-icon"
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
-  ]
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
 }
