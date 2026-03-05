@@ -2,16 +2,16 @@ import { motion } from "framer-motion";
 import { Star, Zap, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GlassCard from "./GlassCard";
-import type { Task } from "@/data/mockData";
+import type { Tables } from "@/integrations/supabase/types";
 
 interface TaskCardProps {
-  task: Task;
+  task: Tables<"tasks">;
   index: number;
-  onStart: (task: Task) => void;
+  onStart: (task: Tables<"tasks">) => void;
 }
 
 const TaskCard = ({ task, index, onStart }: TaskCardProps) => {
-  const slotsPercentage = ((task.slotsTotal - task.slotsRemaining) / task.slotsTotal) * 100;
+  const slotsPercentage = ((task.slots_total - task.slots_remaining) / task.slots_total) * 100;
 
   return (
     <motion.div
@@ -20,19 +20,16 @@ const TaskCard = ({ task, index, onStart }: TaskCardProps) => {
       transition={{ delay: index * 0.1, duration: 0.4 }}
     >
       <GlassCard tilt className="relative overflow-hidden">
-        {/* Gradient accent */}
         <div className="absolute top-0 right-0 h-24 w-24 rounded-bl-full gradient-primary opacity-20" />
 
-        {/* Category badge */}
         <div className="mb-3 inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
           <Star className="h-3 w-3" />
-          {task.category}
+          {task.category || "Task"}
         </div>
 
         <h3 className="mb-1 font-display text-lg font-bold text-foreground">{task.title}</h3>
         <p className="mb-4 text-sm text-muted-foreground line-clamp-2">{task.description}</p>
 
-        {/* Stats row */}
         <div className="mb-4 flex items-center gap-4">
           <div className="flex items-center gap-1.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary">
@@ -43,7 +40,6 @@ const TaskCard = ({ task, index, onStart }: TaskCardProps) => {
               <p className="font-display font-bold text-foreground">₹{task.reward}</p>
             </div>
           </div>
-
           <div className="flex items-center gap-1.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/20">
               <Zap className="h-4 w-4 text-accent" />
@@ -53,19 +49,17 @@ const TaskCard = ({ task, index, onStart }: TaskCardProps) => {
               <p className="font-display font-bold text-foreground">{task.points}</p>
             </div>
           </div>
-
           <div className="flex items-center gap-1.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary/20">
               <Users className="h-4 w-4 text-secondary" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Slots</p>
-              <p className="font-display font-bold text-foreground">{task.slotsRemaining}/{task.slotsTotal}</p>
+              <p className="font-display font-bold text-foreground">{task.slots_remaining}/{task.slots_total}</p>
             </div>
           </div>
         </div>
 
-        {/* Slots progress bar */}
         <div className="mb-4 h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <motion.div
             className="h-full rounded-full gradient-primary"

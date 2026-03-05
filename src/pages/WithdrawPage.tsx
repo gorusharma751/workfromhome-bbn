@@ -4,22 +4,42 @@ import { ArrowLeft, Wallet, CreditCard, Bitcoin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import GlassCard from "@/components/GlassCard";
-import { mockUser } from "@/data/mockData";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const WithdrawPage = () => {
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
   const [method, setMethod] = useState<"upi" | "binance">("upi");
   const [amount, setAmount] = useState("");
-  const [address, setAddress] = useState(method === "upi" ? mockUser.upiId || "" : "");
+  const [address, setAddress] = useState(profile?.upi_id || "");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
+  if (!profile || !user) return null;
+
+  const handleSubmit = async () => {
     if (!amount || parseFloat(amount) <= 0) { toast.error("Enter a valid amount"); return; }
     if (!address) { toast.error("Enter payment address"); return; }
-    if (parseFloat(amount) > mockUser.walletBalance) { toast.error("Insufficient balance"); return; }
-    toast.success("Withdrawal request submitted!");
-    navigate("/profile");
+    if (parseFloat(amount) > Number(profile.wallet_balance)) { toast.error("Insufficient balance"); return; }
+    
+    setLoading(true);
+    try {
+      const { error } = await supabase.from("withdraw_requests").insert({
+        user_id: user.id,
+        amount: parseFloat(amount),
+        method,
+        address,
+      });
+      if (error) throw error;
+      toast.success("Withdrawal request submitted!");
+      navigate("/profile");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -29,21 +49,16 @@ const WithdrawPage = () => {
           <button onClick={() => navigate(-1)} className="rounded-lg bg-muted/50 p-2"><ArrowLeft className="h-5 w-5 text-foreground" /></button>
           <div>
             <h1 className="font-display text-xl font-bold gradient-text">Withdraw</h1>
-            <p className="text-xs text-muted-foreground">Balance: ₹{mockUser.walletBalance}</p>
+            <p className="text-xs text-muted-foreground">Balance: ₹{profile.wallet_balance}</p>
           </div>
         </motion.div>
 
-        {/* Method selector */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-4 grid grid-cols-2 gap-3">
           {([
             { key: "upi" as const, icon: CreditCard, label: "UPI" },
             { key: "binance" as const, icon: Bitcoin, label: "Binance" },
           ]).map((m) => (
-            <GlassCard
-              key={m.key}
-              className={`cursor-pointer text-center py-4 ${method === m.key ? "border-primary/50 glow" : ""}`}
-              onClick={() => { setMethod(m.key); setAddress(""); }}
-            >
+            <GlassCard key={m.key} className={`cursor-pointer text-center py-4 ${method === m.key ? "border-primary/50 glow" : ""}`} onClick={() => { setMethod(m.key); setAddress(""); }}>
               <m.icon className={`mx-auto h-6 w-6 mb-1 ${method === m.key ? "text-primary" : "text-muted-foreground"}`} />
               <p className={`text-sm font-medium ${method === m.key ? "text-foreground" : "text-muted-foreground"}`}>{m.label}</p>
             </GlassCard>
@@ -63,8 +78,8 @@ const WithdrawPage = () => {
               </label>
               <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder={method === "upi" ? "name@paytm" : "0x..."} className="bg-muted/50 border-border/30" />
             </div>
-            <Button onClick={handleSubmit} className="w-full gradient-primary border-0 font-display font-semibold text-primary-foreground">
-              <Wallet className="h-4 w-4" /> Submit Request
+            <Button onClick={handleSubmit} disabled={loading} className="w-full gradient-primary border-0 font-display font-semibold text-primary-foreground">
+              <Wallet className="h-4 w-4" /> {loading ? "Submitting..." : "Submit Request"}
             </Button>
           </GlassCard>
         </motion.div>

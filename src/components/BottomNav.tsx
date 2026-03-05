@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ListTodo, Users, User } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 const tabs = [
   { path: "/", label: "Tasks", icon: ListTodo },
@@ -12,9 +13,10 @@ const tabs = [
 const BottomNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  // Hide on admin routes
-  if (location.pathname.startsWith("/admin")) return null;
+  // Hide on admin, login, signup routes or when not logged in
+  if (location.pathname.startsWith("/admin") || location.pathname === "/login" || location.pathname === "/signup" || !user) return null;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 safe-bottom">

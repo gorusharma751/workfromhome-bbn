@@ -6,20 +6,32 @@ import { Input } from "@/components/ui/input";
 import GlassCard from "@/components/GlassCard";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const SignupPage = () => {
   const navigate = useNavigate();
+  const { signUp } = useAuth();
   const [searchParams] = useSearchParams();
   const [name, setName] = useState("");
-  const [mobile, setMobile] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [referralCode, setReferralCode] = useState(searchParams.get("ref") || "");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSignup = () => {
-    if (!name || !mobile || !password) { toast.error("Fill all required fields"); return; }
-    toast.success("Account created successfully!");
-    navigate("/");
+  const handleSignup = async () => {
+    if (!name || !email || !password) { toast.error("Fill all required fields"); return; }
+    if (password.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+    setLoading(true);
+    try {
+      await signUp(email, password, name, referralCode || undefined);
+      toast.success("Account created successfully!");
+      navigate("/");
+    } catch (err: any) {
+      toast.error(err.message || "Signup failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -40,8 +52,8 @@ const SignupPage = () => {
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="bg-muted/50 border-border/30" />
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Mobile Number</label>
-              <Input type="tel" value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="+91 9876543210" className="bg-muted/50 border-border/30" />
+              <label className="text-sm font-medium text-foreground mb-1.5 block">Email</label>
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="bg-muted/50 border-border/30" />
             </div>
             <div>
               <label className="text-sm font-medium text-foreground mb-1.5 block">Password</label>
@@ -56,8 +68,8 @@ const SignupPage = () => {
               <label className="text-sm font-medium text-foreground mb-1.5 block">Referral Code (optional)</label>
               <Input value={referralCode} onChange={(e) => setReferralCode(e.target.value)} placeholder="Enter code" className="bg-muted/50 border-border/30" />
             </div>
-            <Button onClick={handleSignup} className="w-full gradient-primary border-0 font-display font-semibold text-primary-foreground">
-              Sign Up
+            <Button onClick={handleSignup} disabled={loading} className="w-full gradient-primary border-0 font-display font-semibold text-primary-foreground">
+              {loading ? "Creating account..." : "Sign Up"}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
               Already have an account?{" "}

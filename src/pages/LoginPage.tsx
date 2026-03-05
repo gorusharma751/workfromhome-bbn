@@ -6,17 +6,28 @@ import { Input } from "@/components/ui/input";
 import GlassCard from "@/components/GlassCard";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const [mobile, setMobile] = useState("");
+  const { signIn } = useAuth();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    if (!mobile || !password) { toast.error("Fill all fields"); return; }
-    toast.success("Logged in successfully!");
-    navigate("/");
+  const handleLogin = async () => {
+    if (!email || !password) { toast.error("Fill all fields"); return; }
+    setLoading(true);
+    try {
+      await signIn(email, password);
+      toast.success("Logged in successfully!");
+      navigate("/");
+    } catch (err: any) {
+      toast.error(err.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -33,8 +44,8 @@ const LoginPage = () => {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <GlassCard className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Mobile Number</label>
-              <Input type="tel" value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="+91 9876543210" className="bg-muted/50 border-border/30" />
+              <label className="text-sm font-medium text-foreground mb-1.5 block">Email</label>
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="bg-muted/50 border-border/30" />
             </div>
             <div>
               <label className="text-sm font-medium text-foreground mb-1.5 block">Password</label>
@@ -45,8 +56,8 @@ const LoginPage = () => {
                 </button>
               </div>
             </div>
-            <Button onClick={handleLogin} className="w-full gradient-primary border-0 font-display font-semibold text-primary-foreground">
-              Login
+            <Button onClick={handleLogin} disabled={loading} className="w-full gradient-primary border-0 font-display font-semibold text-primary-foreground">
+              {loading ? "Logging in..." : "Login"}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
               Don't have an account?{" "}
