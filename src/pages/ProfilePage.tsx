@@ -8,15 +8,14 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { supabase } from "@/integrations/supabase/client";
-
-const TELEGRAM_GROUP = "https://t.me/workfromhome_updates";
-const TELEGRAM_SUPPORT = "https://t.me/workfromhome_support";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { profile, user, signOut, isAdmin, refreshProfile } = useAuth();
   const { canInstall, isInstalled, install } = usePWAInstall();
+  const { telegram } = useAppSettings();
   const [editingUpi, setEditingUpi] = useState(false);
   const [upiValue, setUpiValue] = useState(profile?.upi_id || "");
   const [savingUpi, setSavingUpi] = useState(false);
@@ -182,7 +181,7 @@ const ProfilePage = () => {
         {/* Telegram & Support */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
           <GlassCard className="mb-4 p-0 overflow-hidden">
-            <a href={TELEGRAM_GROUP} target="_blank" rel="noopener noreferrer" className="flex w-full items-center gap-3 border-b border-border/20 px-5 py-4 text-left transition-colors hover:bg-muted/30">
+            <a href={telegram.group_link} target="_blank" rel="noopener noreferrer" className="flex w-full items-center gap-3 border-b border-border/20 px-5 py-4 text-left transition-colors hover:bg-muted/30">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(200,80%,50%)]/20">
                 <MessageCircle className="h-4 w-4 text-[hsl(200,80%,50%)]" />
               </div>
@@ -192,7 +191,7 @@ const ProfilePage = () => {
               </div>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </a>
-            <a href={TELEGRAM_SUPPORT} target="_blank" rel="noopener noreferrer" className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-muted/30">
+            <a href={telegram.support_link} target="_blank" rel="noopener noreferrer" className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-muted/30">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-success/20">
                 <Headphones className="h-4 w-4 text-success" />
               </div>
