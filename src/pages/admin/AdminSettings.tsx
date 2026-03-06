@@ -28,7 +28,7 @@ const AdminSettings = () => {
     setSaving("telegram");
     const { error } = await supabase
       .from("admin_settings")
-      .update({ value: telegram as any })
+      .update({ value: telegram as any, updated_at: new Date().toISOString() })
       .eq("key", "telegram");
     if (error) toast.error(error.message);
     else toast.success("Telegram links updated!");
@@ -39,7 +39,7 @@ const AdminSettings = () => {
     setSaving("branding");
     const { error } = await supabase
       .from("admin_settings")
-      .update({ value: branding as any })
+      .update({ value: branding as any, updated_at: new Date().toISOString() })
       .eq("key", "app_branding");
     if (error) toast.error(error.message);
     else toast.success("App branding updated!");
