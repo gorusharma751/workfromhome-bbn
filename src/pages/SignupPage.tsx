@@ -7,10 +7,12 @@ import GlassCard from "@/components/GlassCard";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAppSettings } from "@/hooks/useAppSettings";
 
 const SignupPage = () => {
   const navigate = useNavigate();
   const { signUp } = useAuth();
+  const { branding } = useAppSettings();
   const [searchParams] = useSearchParams();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -38,9 +40,13 @@ const SignupPage = () => {
     <div className="flex min-h-screen items-center justify-center px-4 py-8">
       <div className="w-full max-w-sm">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl gradient-primary animate-float">
-            <span className="text-2xl font-bold text-primary-foreground font-display">W</span>
-          </div>
+          {branding.logo_url ? (
+            <img src={branding.logo_url} alt={branding.app_name} className="mx-auto mb-4 h-16 w-16 rounded-2xl object-cover" />
+          ) : (
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl gradient-primary animate-float">
+              <span className="text-2xl font-bold text-primary-foreground font-display">{branding.app_name.charAt(0)}</span>
+            </div>
+          )}
           <h1 className="font-display text-3xl font-bold gradient-text">Create Account</h1>
           <p className="text-sm text-muted-foreground mt-1">Join & start earning today</p>
         </motion.div>
