@@ -85,15 +85,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signUp = async (email: string, password: string, name: string, referralCode?: string) => {
-    // If referral code, find the referrer profile
+    // If referral code, look up referrer using security definer function (works without auth)
     let referredBy: string | undefined;
     if (referralCode) {
-      const { data: referrer } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("referral_code", referralCode.toUpperCase())
-        .single();
-      if (referrer) referredBy = referrer.id;
+      const { data } = await supabase.rpc("lookup_referrer_by_code", { _code: referralCode });
+      if (data) referredBy = data as string;
     }
 
     const { error } = await supabase.auth.signUp({
@@ -105,23 +101,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
     if (error) throw error;
 
-    // After signup, if there's a referrer, update the profile and create referral entries
+    // After signup, if there's a referrer, set referred_by using security definer function
     if (referredBy) {
-      // Wait a moment for the trigger to create the profile
-      await new Promise((r) => setTimeout(r, 1000));
+      // Wait for the handle_new_user trigger to create the profile
+      await new Promise((r) => setTimeout(r, 1500));
       const { data: { user: newUser } } = await supabase.auth.getUser();
       if (newUser) {
-        const { data: newProfile } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("user_id", newUser.id)
-          .single();
-        if (newProfile) {
-          await supabase
-            .from("profiles")
-            .update({ referred_by: referredBy })
-            .eq("id", newProfile.id);
-        }
+        await supabase.rpc("set_referred_by", {
+          _user_id: newUser.id,
+          _referrer_id: referredBy,
+        });
       }
     }
   };
