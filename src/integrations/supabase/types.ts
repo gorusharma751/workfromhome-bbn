@@ -312,6 +312,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      lookup_referrer_by_code: { Args: { _code: string }; Returns: string }
+      set_referred_by: {
+        Args: { _referrer_id: string; _user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user"
