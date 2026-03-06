@@ -145,6 +145,7 @@ export type Database = {
       task_submissions: {
         Row: {
           comment: string | null
+          form_data: Json | null
           id: string
           reviewed_at: string | null
           screenshot_url: string | null
@@ -155,6 +156,7 @@ export type Database = {
         }
         Insert: {
           comment?: string | null
+          form_data?: Json | null
           id?: string
           reviewed_at?: string | null
           screenshot_url?: string | null
@@ -165,6 +167,7 @@ export type Database = {
         }
         Update: {
           comment?: string | null
+          form_data?: Json | null
           id?: string
           reviewed_at?: string | null
           screenshot_url?: string | null
@@ -185,10 +188,13 @@ export type Database = {
       }
       tasks: {
         Row: {
+          approval_days: number | null
           category: string | null
           created_at: string
           description: string | null
           end_date: string | null
+          form_fields: Json | null
+          has_refund: boolean | null
           id: string
           points: number
           review_text: string | null
@@ -202,10 +208,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          approval_days?: number | null
           category?: string | null
           created_at?: string
           description?: string | null
           end_date?: string | null
+          form_fields?: Json | null
+          has_refund?: boolean | null
           id?: string
           points?: number
           review_text?: string | null
@@ -219,10 +228,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          approval_days?: number | null
           category?: string | null
           created_at?: string
           description?: string | null
           end_date?: string | null
+          form_fields?: Json | null
+          has_refund?: boolean | null
           id?: string
           points?: number
           review_text?: string | null
