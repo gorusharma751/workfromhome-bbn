@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Wallet, Zap, Users, Award, LogOut, Download, CreditCard, Bitcoin, ChevronRight, ListChecks, Share2, MessageCircle, Headphones, Edit3, Check, X } from "lucide-react";
+import { Wallet, Zap, Users, Award, LogOut, Download, CreditCard, Bitcoin, ChevronRight, ListChecks, Share2, MessageCircle, Headphones, Edit3, Check, X, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import GlassCard from "@/components/GlassCard";
@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { profile, user, signOut, isAdmin, refreshProfile } = useAuth();
-  const { canInstall, isInstalled, install } = usePWAInstall();
+  const { canInstall, isInstalled, install, updateAvailable, checkingUpdate, updating, checkForUpdate, updateApp } = usePWAInstall();
   const { telegram } = useAppSettings();
   const [editingUpi, setEditingUpi] = useState(false);
   const [upiValue, setUpiValue] = useState(profile?.upi_id || "");
@@ -35,6 +35,20 @@ const ProfilePage = () => {
       toast.info("App is already installed!");
     } else {
       toast.info("Open in browser → Menu → Add to Home Screen");
+    }
+  };
+
+  const handleUpdateApp = async () => {
+    if (updateAvailable) {
+      await updateApp();
+      return;
+    }
+
+    const hasUpdate = await checkForUpdate();
+    if (hasUpdate) {
+      toast.success("Update mil gaya! 'Update App' dabao.");
+    } else {
+      toast.info("App already latest hai.");
     }
   };
 
@@ -182,8 +196,8 @@ const ProfilePage = () => {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
           <GlassCard className="mb-4 p-0 overflow-hidden">
             <a href={telegram.group_link} target="_blank" rel="noopener noreferrer" className="flex w-full items-center gap-3 border-b border-border/20 px-5 py-4 text-left transition-colors hover:bg-muted/30">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(200,80%,50%)]/20">
-                <MessageCircle className="h-4 w-4 text-[hsl(200,80%,50%)]" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/20">
+                <MessageCircle className="h-4 w-4 text-primary" />
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium text-foreground">Telegram Updates</p>
@@ -205,12 +219,16 @@ const ProfilePage = () => {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <Button className="w-full gradient-primary border-0 font-display font-semibold text-primary-foreground" onClick={handleInstall}>
-              <Download className="h-4 w-4" /> {isInstalled ? "Installed ✓" : "Install App"}
+              <Download className="h-4 w-4" /> {isInstalled ? "Installed ✓" : "Install"}
             </Button>
             <Button variant="outline" className="w-full border-primary/30 text-primary hover:bg-primary/10 font-display font-semibold" onClick={handleShare}>
-              <Share2 className="h-4 w-4" /> Share App
+              <Share2 className="h-4 w-4" /> Share
+            </Button>
+            <Button variant="outline" className="w-full border-primary/30 text-primary hover:bg-primary/10 font-display font-semibold" onClick={handleUpdateApp} disabled={updating || checkingUpdate}>
+              <RefreshCw className={`h-4 w-4 ${(updating || checkingUpdate) ? "animate-spin" : ""}`} />
+              {updating ? "Updating" : checkingUpdate ? "Checking" : updateAvailable ? "Update" : "Check"}
             </Button>
           </div>
           <Button variant="outline" className="w-full border-destructive/30 text-destructive hover:bg-destructive/10 font-display" onClick={handleLogout}>
