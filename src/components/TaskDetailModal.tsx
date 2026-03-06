@@ -1,14 +1,25 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Copy, ExternalLink, Upload, CheckCircle2, MessageSquare } from "lucide-react";
+import { Copy, ExternalLink, Upload, CheckCircle2, MessageSquare, Clock, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Tables } from "@/integrations/supabase/types";
+
+interface FormField {
+  id: string;
+  label: string;
+  type: "text" | "email" | "number" | "tel" | "textarea" | "select";
+  required: boolean;
+  placeholder?: string;
+  options?: string[];
+}
 
 interface TaskDetailModalProps {
   task: Tables<"tasks"> | null;
@@ -24,8 +35,19 @@ const TaskDetailModal = ({ task, open, onClose }: TaskDetailModalProps) => {
   const [comment, setComment] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [formData, setFormData] = useState<Record<string, string>>({});
 
   if (!task) return null;
+
+  const formFields: FormField[] = Array.isArray((task as any).form_fields) ? (task as any).form_fields : [];
+  const hasFormFields = formFields.length > 0;
+  const approvalDays = (task as any).approval_days || 1;
+  const hasRefund = (task as any).has_refund || false;
+
+  // Steps: 1=copy, 2=open link, 3=form (if has fields), 4=upload+submit
+  const totalSteps = hasFormFields ? 4 : 3;
+  const formStep = hasFormFields ? 3 : -1;
+  const uploadStep = hasFormFields ? 4 : 3;
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(task.review_text || "");
@@ -37,6 +59,17 @@ const TaskDetailModal = ({ task, open, onClose }: TaskDetailModalProps) => {
   const handleOpenLink = () => {
     window.open(task.task_link || "", "_blank");
     setTimeout(() => setStep(3), 500);
+  };
+
+  const handleFormNext = () => {
+    // Validate required fields
+    for (const field of formFields) {
+      if (field.required && !formData[field.id]?.trim()) {
+        toast.error(`Please fill "${field.label}"`);
+        return;
+      }
+    }
+    setStep(uploadStep);
   };
 
   const handleSubmit = async () => {
@@ -57,15 +90,20 @@ const TaskDetailModal = ({ task, open, onClose }: TaskDetailModalProps) => {
         screenshotUrl = urlData.publicUrl;
       }
 
-      const { error } = await supabase.from("task_submissions").insert({
+      const insertPayload: any = {
         user_id: user.id,
         task_id: task.id,
         screenshot_url: screenshotUrl || null,
         comment: comment || null,
-      });
+      };
+      if (hasFormFields) {
+        insertPayload.form_data = formData;
+      }
+
+      const { error } = await supabase.from("task_submissions").insert(insertPayload);
       if (error) throw error;
 
-      toast.success("Proof submitted! Waiting for admin approval.");
+      toast.success(`Proof submitted! Approval may take up to ${approvalDays} days.`);
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       handleClose();
     } catch (err: any) {
@@ -81,6 +119,47 @@ const TaskDetailModal = ({ task, open, onClose }: TaskDetailModalProps) => {
     setCopied(false);
     setComment("");
     setFile(null);
+    setFormData({});
+  };
+
+  const renderFormField = (field: FormField) => {
+    const value = formData[field.id] || "";
+    const onChange = (v: string) => setFormData({ ...formData, [field.id]: v });
+
+    if (field.type === "textarea") {
+      return (
+        <Textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder || field.label}
+          className="bg-muted/50 border-border/30 resize-none text-sm"
+          rows={2}
+        />
+      );
+    }
+    if (field.type === "select" && field.options?.length) {
+      return (
+        <Select value={value} onValueChange={onChange}>
+          <SelectTrigger className="bg-muted/50 border-border/30 text-sm">
+            <SelectValue placeholder={field.placeholder || "Select..."} />
+          </SelectTrigger>
+          <SelectContent>
+            {field.options.map((opt) => (
+              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+    }
+    return (
+      <Input
+        type={field.type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={field.placeholder || field.label}
+        className="bg-muted/50 border-border/30 text-sm"
+      />
+    );
   };
 
   return (
@@ -91,13 +170,32 @@ const TaskDetailModal = ({ task, open, onClose }: TaskDetailModalProps) => {
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* Approval & Refund info */}
+          {(approvalDays > 1 || hasRefund) && (
+            <div className="flex flex-wrap gap-2">
+              {approvalDays > 1 && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-lg px-2.5 py-1.5">
+                  <Clock className="h-3 w-3" />
+                  <span>Approval: {approvalDays} days</span>
+                </div>
+              )}
+              {hasRefund && (
+                <div className="flex items-center gap-1.5 text-xs text-warning bg-warning/10 rounded-lg px-2.5 py-1.5">
+                  <FileText className="h-3 w-3" />
+                  <span>Refund form available after 7 days</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step indicators */}
           <div className="flex items-center justify-center gap-2">
-            {[1, 2, 3].map((s) => (
+            {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
               <div key={s} className="flex items-center gap-2">
                 <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold transition-all ${step >= s ? "gradient-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
                   {step > s ? <CheckCircle2 className="h-4 w-4" /> : s}
                 </div>
-                {s < 3 && <div className={`h-0.5 w-8 rounded-full transition-all ${step > s ? "gradient-primary" : "bg-muted"}`} />}
+                {s < totalSteps && <div className={`h-0.5 w-6 rounded-full transition-all ${step > s ? "gradient-primary" : "bg-muted"}`} />}
               </div>
             ))}
           </div>
@@ -125,8 +223,29 @@ const TaskDetailModal = ({ task, open, onClose }: TaskDetailModalProps) => {
                 </Button>
               </motion.div>
             )}
-            {step === 3 && (
-              <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
+            {step === formStep && hasFormFields && (
+              <motion.div key="stepForm" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
+                <div className="rounded-xl bg-muted/50 p-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">📋 Additional Details Required</p>
+                  <p className="text-[11px] text-muted-foreground">Please fill in the following information.</p>
+                </div>
+                <div className="space-y-3">
+                  {formFields.map((field) => (
+                    <div key={field.id}>
+                      <label className="text-xs font-medium text-foreground mb-1 block">
+                        {field.label} {field.required && <span className="text-destructive">*</span>}
+                      </label>
+                      {renderFormField(field)}
+                    </div>
+                  ))}
+                </div>
+                <Button onClick={handleFormNext} className="w-full gradient-primary border-0 font-display font-semibold text-primary-foreground">
+                  Continue →
+                </Button>
+              </motion.div>
+            )}
+            {step === uploadStep && (
+              <motion.div key="stepUpload" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
                 <div className="rounded-xl border-2 border-dashed border-border/50 p-8 text-center">
                   <Upload className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
                   <p className="text-sm font-medium text-foreground">Upload Screenshot</p>
