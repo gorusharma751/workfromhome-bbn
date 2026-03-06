@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Star, Zap, Users } from "lucide-react";
+import { Star, Zap, Users, Clock, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GlassCard from "./GlassCard";
 import type { Tables } from "@/integrations/supabase/types";
@@ -67,6 +67,25 @@ const TaskCard = ({ task, index, onStart }: TaskCardProps) => {
             animate={{ width: `${slotsPercentage}%` }}
             transition={{ delay: index * 0.1 + 0.3, duration: 0.8 }}
           />
+        </div>
+
+        {/* Tags for approval days, refund, form */}
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          {((task as any).approval_days || 1) > 1 && (
+            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+              <Clock className="h-2.5 w-2.5" /> {(task as any).approval_days} days approval
+            </span>
+          )}
+          {(task as any).has_refund && (
+            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-warning/10 text-warning">
+              <FileText className="h-2.5 w-2.5" /> Refund available
+            </span>
+          )}
+          {((task as any).form_fields as any[])?.length > 0 && (
+            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-secondary/10 text-secondary">
+              <FileText className="h-2.5 w-2.5" /> Details required
+            </span>
+          )}
         </div>
 
         <Button
