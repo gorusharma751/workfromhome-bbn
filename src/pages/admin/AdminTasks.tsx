@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Edit, Trash2, Pause, Play, X } from "lucide-react";
+import { Plus, Edit, Trash2, Pause, Play, X, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -289,6 +289,42 @@ const AdminTasks = () => {
             </div>
             <div><label className="text-xs font-medium text-foreground mb-1 block">Description</label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Task description..." className="bg-muted/50 border-border/30" rows={2} /></div>
             <div><label className="text-xs font-medium text-foreground mb-1 block">Review Text</label><Textarea value={reviewText} onChange={(e) => setReviewText(e.target.value)} placeholder="Text users will copy..." className="bg-muted/50 border-border/30" rows={3} /></div>
+
+            {/* Copy form template from existing task */}
+            {tasks.length > 0 && !editing && (
+              <div className="border border-border/30 rounded-xl p-3">
+                <label className="text-xs font-semibold text-foreground mb-2 block flex items-center gap-1">
+                  <Copy className="h-3 w-3" /> Copy Form Template from Task
+                </label>
+                <Select onValueChange={(taskId) => {
+                  const srcTask = tasks.find(t => t.id === taskId);
+                  if (srcTask) {
+                    const f1 = (srcTask as any).form_fields;
+                    const f2 = (srcTask as any).second_form_fields;
+                    if (Array.isArray(f1) && f1.length > 0) {
+                      setFormFields(f1.map((f: any) => ({ ...f, id: crypto.randomUUID() })));
+                    }
+                    if (Array.isArray(f2) && f2.length > 0) {
+                      setSecondFormFields(f2.map((f: any) => ({ ...f, id: crypto.randomUUID() })));
+                    }
+                    toast.success("Form fields copied! You can edit them below.");
+                  }
+                }}>
+                  <SelectTrigger className="bg-muted/50 border-border/30 text-xs">
+                    <SelectValue placeholder="Select a task to copy fields from..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tasks.filter(t => {
+                      const f1 = (t as any).form_fields;
+                      const f2 = (t as any).second_form_fields;
+                      return (Array.isArray(f1) && f1.length > 0) || (Array.isArray(f2) && f2.length > 0);
+                    }).map(t => (
+                      <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <Tabs defaultValue="form1" className="w-full">
               <TabsList className="w-full grid grid-cols-2">
