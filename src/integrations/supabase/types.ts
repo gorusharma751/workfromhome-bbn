@@ -149,6 +149,8 @@ export type Database = {
           id: string
           reviewed_at: string | null
           screenshot_url: string | null
+          second_form_data: Json | null
+          second_form_status: string | null
           status: Database["public"]["Enums"]["submission_status"]
           submitted_at: string
           task_id: string
@@ -160,6 +162,8 @@ export type Database = {
           id?: string
           reviewed_at?: string | null
           screenshot_url?: string | null
+          second_form_data?: Json | null
+          second_form_status?: string | null
           status?: Database["public"]["Enums"]["submission_status"]
           submitted_at?: string
           task_id: string
@@ -171,6 +175,8 @@ export type Database = {
           id?: string
           reviewed_at?: string | null
           screenshot_url?: string | null
+          second_form_data?: Json | null
+          second_form_status?: string | null
           status?: Database["public"]["Enums"]["submission_status"]
           submitted_at?: string
           task_id?: string
@@ -199,6 +205,7 @@ export type Database = {
           points: number
           review_text: string | null
           reward: number
+          second_form_fields: Json | null
           slots_remaining: number
           slots_total: number
           start_date: string | null
@@ -219,6 +226,7 @@ export type Database = {
           points?: number
           review_text?: string | null
           reward?: number
+          second_form_fields?: Json | null
           slots_remaining?: number
           slots_total?: number
           start_date?: string | null
@@ -239,6 +247,7 @@ export type Database = {
           points?: number
           review_text?: string | null
           reward?: number
+          second_form_fields?: Json | null
           slots_remaining?: number
           slots_total?: number
           start_date?: string | null
