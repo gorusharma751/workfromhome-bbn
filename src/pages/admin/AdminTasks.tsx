@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Edit, Trash2, Pause, Play, X, GripVertical } from "lucide-react";
+import { Plus, Edit, Trash2, Pause, Play, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import GlassCard from "@/components/GlassCard";
 import StatusBadge from "@/components/StatusBadge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,18 +18,108 @@ import type { Tables } from "@/integrations/supabase/types";
 interface FormField {
   id: string;
   label: string;
-  type: "text" | "email" | "number" | "tel" | "textarea" | "select";
+  type: "text" | "email" | "number" | "tel" | "textarea" | "select" | "image";
   required: boolean;
   placeholder?: string;
-  options?: string[]; // for select type
+  options?: string[];
 }
+
+const FormFieldBuilder = ({
+  fields,
+  onChange,
+  label,
+}: {
+  fields: FormField[];
+  onChange: (fields: FormField[]) => void;
+  label: string;
+}) => {
+  const addField = () => {
+    onChange([...fields, { id: crypto.randomUUID(), label: "", type: "text", required: false, placeholder: "" }]);
+  };
+  const updateField = (id: string, updates: Partial<FormField>) => {
+    onChange(fields.map((f) => (f.id === id ? { ...f, ...updates } : f)));
+  };
+  const removeField = (id: string) => {
+    onChange(fields.filter((f) => f.id !== id));
+  };
+
+  return (
+    <div className="border border-border/30 rounded-xl p-3 space-y-3">
+      <div className="flex items-center justify-between">
+        <label className="text-xs font-semibold text-foreground">{label}</label>
+        <Button type="button" size="sm" variant="outline" className="text-xs border-border/30" onClick={addField}>
+          <Plus className="h-3 w-3" /> Add Field
+        </Button>
+      </div>
+      {fields.length === 0 && (
+        <p className="text-xs text-muted-foreground text-center py-2">No custom fields added.</p>
+      )}
+      {fields.map((field, idx) => (
+        <div key={field.id} className="rounded-lg bg-muted/30 p-2.5 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-muted-foreground font-medium">Field {idx + 1}</span>
+            <button onClick={() => removeField(field.id)} className="text-destructive hover:bg-destructive/10 rounded p-0.5">
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              value={field.label}
+              onChange={(e) => updateField(field.id, { label: e.target.value })}
+              placeholder="Field label"
+              className="bg-background/50 border-border/30 text-xs h-8"
+            />
+            <Select value={field.type} onValueChange={(v) => updateField(field.id, { type: v as FormField["type"] })}>
+              <SelectTrigger className="bg-background/50 border-border/30 text-xs h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="text">Text</SelectItem>
+                <SelectItem value="email">Email</SelectItem>
+                <SelectItem value="number">Number</SelectItem>
+                <SelectItem value="tel">Phone</SelectItem>
+                <SelectItem value="textarea">Textarea</SelectItem>
+                <SelectItem value="select">Dropdown</SelectItem>
+                <SelectItem value="image">📷 Image Upload</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            {field.type !== "image" && (
+              <Input
+                value={field.placeholder || ""}
+                onChange={(e) => updateField(field.id, { placeholder: e.target.value })}
+                placeholder="Placeholder text"
+                className="bg-background/50 border-border/30 text-xs h-8 flex-1"
+              />
+            )}
+            {field.type === "image" && (
+              <span className="text-[10px] text-muted-foreground flex-1">User will upload an image for this field</span>
+            )}
+            <div className="flex items-center gap-1">
+              <Switch checked={field.required} onCheckedChange={(v) => updateField(field.id, { required: v })} className="scale-75" />
+              <span className="text-[10px] text-muted-foreground">Required</span>
+            </div>
+          </div>
+          {field.type === "select" && (
+            <Input
+              value={(field.options || []).join(", ")}
+              onChange={(e) => updateField(field.id, { options: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+              placeholder="Option 1, Option 2, Option 3"
+              className="bg-background/50 border-border/30 text-xs h-8"
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const AdminTasks = () => {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Tables<"tasks"> | null>(null);
 
-  // Form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [reviewText, setReviewText] = useState("");
@@ -40,6 +131,7 @@ const AdminTasks = () => {
   const [approvalDays, setApprovalDays] = useState("1");
   const [hasRefund, setHasRefund] = useState(false);
   const [formFields, setFormFields] = useState<FormField[]>([]);
+  const [secondFormFields, setSecondFormFields] = useState<FormField[]>([]);
 
   const { data: tasks = [] } = useQuery({
     queryKey: ["admin-tasks"],
@@ -53,7 +145,7 @@ const AdminTasks = () => {
   const resetForm = () => {
     setTitle(""); setDescription(""); setReviewText(""); setTaskLink("");
     setReward(""); setPoints(""); setSlots(""); setCategory("");
-    setApprovalDays("1"); setHasRefund(false); setFormFields([]);
+    setApprovalDays("1"); setHasRefund(false); setFormFields([]); setSecondFormFields([]);
   };
 
   const openDialog = (task?: Tables<"tasks">) => {
@@ -71,29 +163,13 @@ const AdminTasks = () => {
       setHasRefund((task as any).has_refund || false);
       const fields = (task as any).form_fields;
       setFormFields(Array.isArray(fields) ? fields : []);
+      const sFields = (task as any).second_form_fields;
+      setSecondFormFields(Array.isArray(sFields) ? sFields : []);
     } else {
       setEditing(null);
       resetForm();
     }
     setDialogOpen(true);
-  };
-
-  const addFormField = () => {
-    setFormFields([...formFields, {
-      id: crypto.randomUUID(),
-      label: "",
-      type: "text",
-      required: false,
-      placeholder: "",
-    }]);
-  };
-
-  const updateFormField = (id: string, updates: Partial<FormField>) => {
-    setFormFields(formFields.map(f => f.id === id ? { ...f, ...updates } : f));
-  };
-
-  const removeFormField = (id: string) => {
-    setFormFields(formFields.filter(f => f.id !== id));
   };
 
   const saveMutation = useMutation({
@@ -105,7 +181,8 @@ const AdminTasks = () => {
         category,
         approval_days: parseInt(approvalDays) || 1,
         has_refund: hasRefund,
-        form_fields: formFields.filter(f => f.label.trim()),
+        form_fields: formFields.filter((f) => f.label.trim()),
+        second_form_fields: secondFormFields.filter((f) => f.label.trim()),
       };
       if (editing) {
         delete payload.slots_remaining;
@@ -164,6 +241,9 @@ const AdminTasks = () => {
                   {((task as any).form_fields as any[])?.length > 0 && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary/20 text-secondary font-medium">Form</span>
                   )}
+                  {((task as any).second_form_fields as any[])?.length > 0 && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary font-medium">2nd Form</span>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   ₹{task.reward} · {task.points} pts · {task.slots_remaining}/{task.slots_total} slots · Approval: {(task as any).approval_days || 1} days
@@ -210,69 +290,19 @@ const AdminTasks = () => {
             <div><label className="text-xs font-medium text-foreground mb-1 block">Description</label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Task description..." className="bg-muted/50 border-border/30" rows={2} /></div>
             <div><label className="text-xs font-medium text-foreground mb-1 block">Review Text</label><Textarea value={reviewText} onChange={(e) => setReviewText(e.target.value)} placeholder="Text users will copy..." className="bg-muted/50 border-border/30" rows={3} /></div>
 
-            {/* Form Fields Builder */}
-            <div className="border border-border/30 rounded-xl p-3 space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-foreground">Custom Form Fields</label>
-                <Button type="button" size="sm" variant="outline" className="text-xs border-border/30" onClick={addFormField}>
-                  <Plus className="h-3 w-3" /> Add Field
-                </Button>
-              </div>
-              {formFields.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-2">No custom fields. Users will only upload screenshot & comment.</p>
-              )}
-              {formFields.map((field, idx) => (
-                <div key={field.id} className="rounded-lg bg-muted/30 p-2.5 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-muted-foreground font-medium">Field {idx + 1}</span>
-                    <button onClick={() => removeFormField(field.id)} className="text-destructive hover:bg-destructive/10 rounded p-0.5">
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      value={field.label}
-                      onChange={(e) => updateFormField(field.id, { label: e.target.value })}
-                      placeholder="Field label"
-                      className="bg-background/50 border-border/30 text-xs h-8"
-                    />
-                    <Select value={field.type} onValueChange={(v) => updateFormField(field.id, { type: v as FormField["type"] })}>
-                      <SelectTrigger className="bg-background/50 border-border/30 text-xs h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="text">Text</SelectItem>
-                        <SelectItem value="email">Email</SelectItem>
-                        <SelectItem value="number">Number</SelectItem>
-                        <SelectItem value="tel">Phone</SelectItem>
-                        <SelectItem value="textarea">Textarea</SelectItem>
-                        <SelectItem value="select">Dropdown</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={field.placeholder || ""}
-                      onChange={(e) => updateFormField(field.id, { placeholder: e.target.value })}
-                      placeholder="Placeholder text"
-                      className="bg-background/50 border-border/30 text-xs h-8 flex-1"
-                    />
-                    <div className="flex items-center gap-1">
-                      <Switch checked={field.required} onCheckedChange={(v) => updateFormField(field.id, { required: v })} className="scale-75" />
-                      <span className="text-[10px] text-muted-foreground">Required</span>
-                    </div>
-                  </div>
-                  {field.type === "select" && (
-                    <Input
-                      value={(field.options || []).join(", ")}
-                      onChange={(e) => updateFormField(field.id, { options: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })}
-                      placeholder="Option 1, Option 2, Option 3"
-                      className="bg-background/50 border-border/30 text-xs h-8"
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
+            <Tabs defaultValue="form1" className="w-full">
+              <TabsList className="w-full grid grid-cols-2">
+                <TabsTrigger value="form1">1st Form Fields</TabsTrigger>
+                <TabsTrigger value="form2">2nd Form Fields</TabsTrigger>
+              </TabsList>
+              <TabsContent value="form1">
+                <FormFieldBuilder fields={formFields} onChange={setFormFields} label="1st Form - Custom Fields" />
+              </TabsContent>
+              <TabsContent value="form2">
+                <FormFieldBuilder fields={secondFormFields} onChange={setSecondFormFields} label="2nd Form - Custom Fields (Admin activates)" />
+                <p className="text-[10px] text-muted-foreground mt-2">⚡ 2nd form sirf tab active hoga jab admin submission me manually activate karega.</p>
+              </TabsContent>
+            </Tabs>
 
             <Button className="w-full gradient-primary border-0 font-display font-semibold text-primary-foreground" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
               {saveMutation.isPending ? "Saving..." : editing ? "Save Changes" : "Create Task"}
