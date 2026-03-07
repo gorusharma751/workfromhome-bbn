@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Copy, ExternalLink, Upload, CheckCircle2, MessageSquare, Clock, FileText } from "lucide-react";
+import { Copy, ExternalLink, Upload, CheckCircle2, MessageSquare, Clock, FileText, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,7 +15,7 @@ import type { Tables } from "@/integrations/supabase/types";
 interface FormField {
   id: string;
   label: string;
-  type: "text" | "email" | "number" | "tel" | "textarea" | "select";
+  type: "text" | "email" | "number" | "tel" | "textarea" | "select" | "image";
   required: boolean;
   placeholder?: string;
   options?: string[];
@@ -36,6 +36,7 @@ const TaskDetailModal = ({ task, open, onClose }: TaskDetailModalProps) => {
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState<Record<string, string>>({});
+  const [formImageFiles, setFormImageFiles] = useState<Record<string, File>>({});
 
   if (!task) return null;
 
@@ -44,10 +45,19 @@ const TaskDetailModal = ({ task, open, onClose }: TaskDetailModalProps) => {
   const approvalDays = (task as any).approval_days || 1;
   const hasRefund = (task as any).has_refund || false;
 
-  // Steps: 1=copy, 2=open link, 3=form (if has fields), 4=upload+submit
   const totalSteps = hasFormFields ? 4 : 3;
   const formStep = hasFormFields ? 3 : -1;
   const uploadStep = hasFormFields ? 4 : 3;
+
+  const uploadFormImage = async (fieldId: string, imageFile: File): Promise<string> => {
+    if (!user) throw new Error("Not logged in");
+    const ext = imageFile.name.split(".").pop();
+    const path = `${user.id}/form_${task.id}_${fieldId}.${ext}`;
+    const { error } = await supabase.storage.from("screenshots").upload(path, imageFile, { upsert: true });
+    if (error) throw error;
+    const { data } = supabase.storage.from("screenshots").getPublicUrl(path);
+    return data.publicUrl;
+  };
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(task.review_text || "");
@@ -61,12 +71,14 @@ const TaskDetailModal = ({ task, open, onClose }: TaskDetailModalProps) => {
     setTimeout(() => setStep(3), 500);
   };
 
-  const handleFormNext = () => {
-    // Validate required fields
+  const handleFormNext = async () => {
     for (const field of formFields) {
-      if (field.required && !formData[field.id]?.trim()) {
-        toast.error(`Please fill "${field.label}"`);
-        return;
+      if (field.required) {
+        if (field.type === "image") {
+          if (!formImageFiles[field.id]) { toast.error(`Please upload "${field.label}"`); return; }
+        } else {
+          if (!formData[field.id]?.trim()) { toast.error(`Please fill "${field.label}"`); return; }
+        }
       }
     }
     setStep(uploadStep);
@@ -76,18 +88,21 @@ const TaskDetailModal = ({ task, open, onClose }: TaskDetailModalProps) => {
     if (!user) return;
     setSubmitting(true);
     try {
+      // Upload main screenshot
       let screenshotUrl = "";
       if (file) {
         const ext = file.name.split(".").pop();
         const path = `${user.id}/${task.id}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from("screenshots")
-          .upload(path, file, { upsert: true });
+        const { error: uploadError } = await supabase.storage.from("screenshots").upload(path, file, { upsert: true });
         if (uploadError) throw uploadError;
-        const { data: urlData } = supabase.storage
-          .from("screenshots")
-          .getPublicUrl(path);
+        const { data: urlData } = supabase.storage.from("screenshots").getPublicUrl(path);
         screenshotUrl = urlData.publicUrl;
+      }
+
+      // Upload form image fields
+      const finalFormData: Record<string, string> = { ...formData };
+      for (const [fieldId, imageFile] of Object.entries(formImageFiles)) {
+        finalFormData[fieldId] = await uploadFormImage(fieldId, imageFile);
       }
 
       const insertPayload: any = {
@@ -97,7 +112,7 @@ const TaskDetailModal = ({ task, open, onClose }: TaskDetailModalProps) => {
         comment: comment || null,
       };
       if (hasFormFields) {
-        insertPayload.form_data = formData;
+        insertPayload.form_data = finalFormData;
       }
 
       const { error } = await supabase.from("task_submissions").insert(insertPayload);
@@ -120,46 +135,44 @@ const TaskDetailModal = ({ task, open, onClose }: TaskDetailModalProps) => {
     setComment("");
     setFile(null);
     setFormData({});
+    setFormImageFiles({});
   };
 
   const renderFormField = (field: FormField) => {
+    if (field.type === "image") {
+      const imageFile = formImageFiles[field.id];
+      return (
+        <div className="rounded-lg border-2 border-dashed border-border/50 p-3 text-center">
+          <Camera className="mx-auto mb-1 h-6 w-6 text-muted-foreground" />
+          <p className="text-xs text-muted-foreground mb-1">{imageFile ? imageFile.name : "Upload image"}</p>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) setFormImageFiles({ ...formImageFiles, [field.id]: f });
+            }}
+            className="w-full text-xs text-muted-foreground file:mr-2 file:rounded-lg file:border-0 file:gradient-primary file:px-2 file:py-1 file:text-xs file:font-medium file:text-primary-foreground"
+          />
+        </div>
+      );
+    }
+
     const value = formData[field.id] || "";
     const onChange = (v: string) => setFormData({ ...formData, [field.id]: v });
 
     if (field.type === "textarea") {
-      return (
-        <Textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={field.placeholder || field.label}
-          className="bg-muted/50 border-border/30 resize-none text-sm"
-          rows={2}
-        />
-      );
+      return <Textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder || field.label} className="bg-muted/50 border-border/30 resize-none text-sm" rows={2} />;
     }
     if (field.type === "select" && field.options?.length) {
       return (
         <Select value={value} onValueChange={onChange}>
-          <SelectTrigger className="bg-muted/50 border-border/30 text-sm">
-            <SelectValue placeholder={field.placeholder || "Select..."} />
-          </SelectTrigger>
-          <SelectContent>
-            {field.options.map((opt) => (
-              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-            ))}
-          </SelectContent>
+          <SelectTrigger className="bg-muted/50 border-border/30 text-sm"><SelectValue placeholder={field.placeholder || "Select..."} /></SelectTrigger>
+          <SelectContent>{field.options.map((opt) => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent>
         </Select>
       );
     }
-    return (
-      <Input
-        type={field.type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={field.placeholder || field.label}
-        className="bg-muted/50 border-border/30 text-sm"
-      />
-    );
+    return <Input type={field.type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder || field.label} className="bg-muted/50 border-border/30 text-sm" />;
   };
 
   return (
@@ -170,25 +183,21 @@ const TaskDetailModal = ({ task, open, onClose }: TaskDetailModalProps) => {
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Approval & Refund info */}
           {(approvalDays > 1 || hasRefund) && (
             <div className="flex flex-wrap gap-2">
               {approvalDays > 1 && (
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-lg px-2.5 py-1.5">
-                  <Clock className="h-3 w-3" />
-                  <span>Approval: {approvalDays} days</span>
+                  <Clock className="h-3 w-3" /><span>Approval: {approvalDays} days</span>
                 </div>
               )}
               {hasRefund && (
                 <div className="flex items-center gap-1.5 text-xs text-warning bg-warning/10 rounded-lg px-2.5 py-1.5">
-                  <FileText className="h-3 w-3" />
-                  <span>Refund form available after 7 days</span>
+                  <FileText className="h-3 w-3" /><span>Refund form available after 7 days</span>
                 </div>
               )}
             </div>
           )}
 
-          {/* Step indicators */}
           <div className="flex items-center justify-center gap-2">
             {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
               <div key={s} className="flex items-center gap-2">
