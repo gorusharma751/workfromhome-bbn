@@ -7,7 +7,6 @@ import TaskCard from "@/components/TaskCard";
 import TaskDetailModal from "@/components/TaskDetailModal";
 import SecondFormModal from "@/components/SecondFormModal";
 import GlassCard from "@/components/GlassCard";
-import StatusBadge from "@/components/StatusBadge";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -33,7 +32,6 @@ const TasksPage = () => {
     },
   });
 
-  // Fetch user's submissions that have 2nd form active
   const { data: mySubmissions = [] } = useQuery({
     queryKey: ["my-submissions"],
     queryFn: async () => {
@@ -49,9 +47,14 @@ const TasksPage = () => {
     enabled: !!user,
   });
 
-  const pending2ndForms = mySubmissions.filter(
-    (s: any) => s.second_form_status === "active"
-  );
+  // 2nd form shows only after 3 days of submission
+  const pending2ndForms = mySubmissions.filter((s: any) => {
+    if (s.second_form_status !== "active") return false;
+    const submittedAt = new Date(s.submitted_at);
+    const now = new Date();
+    const daysDiff = (now.getTime() - submittedAt.getTime()) / (1000 * 60 * 60 * 24);
+    return daysDiff >= 3;
+  });
 
   const filteredTasks = tasks.filter(
     (t) => t.title.toLowerCase().includes(search.toLowerCase())
@@ -63,7 +66,7 @@ const TasksPage = () => {
   };
 
   return (
-    <div className="min-h-screen pb-24 pt-4">
+    <div className="min-h-screen pb-24 pt-14">
       <div className="mx-auto max-w-md px-4">
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
           <h1 className="font-display text-2xl font-bold gradient-text">Available Tasks</h1>

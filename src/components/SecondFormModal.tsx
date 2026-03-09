@@ -1,10 +1,14 @@
 import { useState } from "react";
-import { Camera, CheckCircle2 } from "lucide-react";
+import { Camera, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,7 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 interface FormField {
   id: string;
   label: string;
-  type: "text" | "email" | "number" | "tel" | "textarea" | "select" | "image";
+  type: "text" | "email" | "number" | "tel" | "textarea" | "select" | "image" | "date";
   required: boolean;
   placeholder?: string;
   options?: string[];
@@ -30,13 +34,12 @@ const SecondFormModal = ({ submission, open, onClose }: SecondFormModalProps) =>
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [formImageFiles, setFormImageFiles] = useState<Record<string, File>>({});
+  const [formDates, setFormDates] = useState<Record<string, Date | undefined>>({});
   const [submitting, setSubmitting] = useState(false);
 
   if (!submission) return null;
 
-  const formFields: FormField[] = Array.isArray(submission.tasks?.second_form_fields)
-    ? submission.tasks.second_form_fields
-    : [];
+  const formFields: FormField[] = Array.isArray(submission.tasks?.second_form_fields) ? submission.tasks.second_form_fields : [];
 
   const uploadImage = async (fieldId: string, imageFile: File): Promise<string> => {
     if (!user) throw new Error("Not logged in");
@@ -52,7 +55,9 @@ const SecondFormModal = ({ submission, open, onClose }: SecondFormModalProps) =>
     for (const field of formFields) {
       if (field.required) {
         if (field.type === "image") {
-          if (!formImageFiles[field.id]) { toast.error(`Please upload "${field.label}"`); return; }
+          if (!formImageFiles[field.id]) { toast.error(`Please fill "${field.label}"`); return; }
+        } else if (field.type === "date") {
+          if (!formDates[field.id]) { toast.error(`Please fill "${field.label}"`); return; }
         } else {
           if (!formData[field.id]?.trim()) { toast.error(`Please fill "${field.label}"`); return; }
         }
@@ -62,6 +67,9 @@ const SecondFormModal = ({ submission, open, onClose }: SecondFormModalProps) =>
     setSubmitting(true);
     try {
       const finalData: Record<string, string> = { ...formData };
+      for (const [fieldId, date] of Object.entries(formDates)) {
+        if (date) finalData[fieldId] = format(date, "yyyy-MM-dd");
+      }
       for (const [fieldId, imageFile] of Object.entries(formImageFiles)) {
         finalData[fieldId] = await uploadImage(fieldId, imageFile);
       }
@@ -74,30 +82,47 @@ const SecondFormModal = ({ submission, open, onClose }: SecondFormModalProps) =>
 
       toast.success("2nd form submitted successfully!");
       queryClient.invalidateQueries({ queryKey: ["my-submissions"] });
-      onClose();
+      queryClient.invalidateQueries({ queryKey: ["my-all-submissions"] });
+      handleClose();
     } catch (err: any) {
-      toast.error(err.message || "Failed to submit");
+      toast.error(err.message || "Submission failed");
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handleClose = () => {
+    onClose();
+    setFormData({});
+    setFormImageFiles({});
+    setFormDates({});
+  };
+
   const renderField = (field: FormField) => {
+    if (field.type === "date") {
+      const selectedDate = formDates[field.id];
+      return (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className={cn("w-full justify-start text-left font-normal bg-muted/50 border-border/30 text-sm", !selectedDate && "text-muted-foreground")}>
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0 z-[9999]" align="start">
+            <Calendar mode="single" selected={selectedDate} onSelect={(d) => setFormDates({ ...formDates, [field.id]: d })} initialFocus className="p-3 pointer-events-auto" />
+          </PopoverContent>
+        </Popover>
+      );
+    }
+
     if (field.type === "image") {
       const imageFile = formImageFiles[field.id];
       return (
         <div className="rounded-lg border-2 border-dashed border-border/50 p-3 text-center">
           <Camera className="mx-auto mb-1 h-6 w-6 text-muted-foreground" />
           <p className="text-xs text-muted-foreground mb-1">{imageFile ? imageFile.name : "Upload image"}</p>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) setFormImageFiles({ ...formImageFiles, [field.id]: f });
-            }}
-            className="w-full text-xs text-muted-foreground file:mr-2 file:rounded-lg file:border-0 file:gradient-primary file:px-2 file:py-1 file:text-xs file:font-medium file:text-primary-foreground"
-          />
+          <input type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) setFormImageFiles({ ...formImageFiles, [field.id]: f }); }} className="w-full text-xs text-muted-foreground file:mr-2 file:rounded-lg file:border-0 file:gradient-primary file:px-2 file:py-1 file:text-xs file:font-medium file:text-primary-foreground" />
         </div>
       );
     }
@@ -111,8 +136,12 @@ const SecondFormModal = ({ submission, open, onClose }: SecondFormModalProps) =>
     if (field.type === "select" && field.options?.length) {
       return (
         <Select value={value} onValueChange={onChange}>
-          <SelectTrigger className="bg-muted/50 border-border/30 text-sm"><SelectValue placeholder={field.placeholder || "Select..."} /></SelectTrigger>
-          <SelectContent>{field.options.map((opt) => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent>
+          <SelectTrigger className="bg-muted/50 border-border/30 text-sm">
+            <SelectValue placeholder={field.placeholder || "Select..."} />
+          </SelectTrigger>
+          <SelectContent className="z-[9999]">
+            {field.options.map((opt) => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}
+          </SelectContent>
         </Select>
       );
     }
@@ -120,14 +149,14 @@ const SecondFormModal = ({ submission, open, onClose }: SecondFormModalProps) =>
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="glass-card border-border/30 sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-display text-xl gradient-text">📋 2nd Form - {submission.tasks?.title}</DialogTitle>
+          <DialogTitle className="font-display text-xl gradient-text">2nd Form - {submission.tasks?.title}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="rounded-xl bg-muted/50 p-3">
-            <p className="text-xs font-medium text-muted-foreground">Admin ne 2nd form activate kiya hai. Please fill karein.</p>
+            <p className="text-xs font-medium text-muted-foreground mb-1">📋 Please fill all required fields</p>
           </div>
           <div className="space-y-3">
             {formFields.map((field) => (
@@ -140,7 +169,7 @@ const SecondFormModal = ({ submission, open, onClose }: SecondFormModalProps) =>
             ))}
           </div>
           <Button onClick={handleSubmit} disabled={submitting} className="w-full gradient-primary border-0 font-display font-semibold text-primary-foreground">
-            <CheckCircle2 className="h-4 w-4" /> {submitting ? "Submitting..." : "Submit 2nd Form"}
+            {submitting ? "Submitting..." : "Submit 2nd Form"}
           </Button>
         </div>
       </DialogContent>

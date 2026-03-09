@@ -8,6 +8,7 @@ import { ProtectedRoute, AdminRoute } from "@/components/ProtectedRoute";
 import BottomNav from "./components/BottomNav";
 import InstallBanner from "./components/InstallBanner";
 import TasksPage from "./pages/TasksPage";
+import MySubmissionsPage from "./pages/MySubmissionsPage";
 import ReferEarnPage from "./pages/ReferEarnPage";
 import ProfilePage from "./pages/ProfilePage";
 import WithdrawPage from "./pages/WithdrawPage";
@@ -21,6 +22,7 @@ import AdminReferrals from "./pages/admin/AdminReferrals";
 import AdminWithdrawals from "./pages/admin/AdminWithdrawals";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminNotifications from "./pages/admin/AdminNotifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +38,7 @@ const App = () => (
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
+            <Route path="/my-submissions" element={<ProtectedRoute><MySubmissionsPage /></ProtectedRoute>} />
             <Route path="/refer" element={<ProtectedRoute><ReferEarnPage /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             <Route path="/withdraw" element={<ProtectedRoute><WithdrawPage /></ProtectedRoute>} />
@@ -46,6 +49,7 @@ const App = () => (
               <Route path="users" element={<AdminUsers />} />
               <Route path="referrals" element={<AdminReferrals />} />
               <Route path="withdrawals" element={<AdminWithdrawals />} />
+              <Route path="notifications" element={<AdminNotifications />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
             <Route path="*" element={<NotFound />} />

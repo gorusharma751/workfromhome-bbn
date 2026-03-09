@@ -18,7 +18,7 @@ import type { Tables } from "@/integrations/supabase/types";
 interface FormField {
   id: string;
   label: string;
-  type: "text" | "email" | "number" | "tel" | "textarea" | "select" | "image";
+  type: "text" | "email" | "number" | "tel" | "textarea" | "select" | "image" | "date";
   required: boolean;
   placeholder?: string;
   options?: string[];
@@ -81,11 +81,12 @@ const FormFieldBuilder = ({
                 <SelectItem value="textarea">Textarea</SelectItem>
                 <SelectItem value="select">Dropdown</SelectItem>
                 <SelectItem value="image">📷 Image Upload</SelectItem>
+                <SelectItem value="date">📅 Date Picker</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="flex items-center gap-2">
-            {field.type !== "image" && (
+            {field.type !== "image" && field.type !== "date" && (
               <Input
                 value={field.placeholder || ""}
                 onChange={(e) => updateField(field.id, { placeholder: e.target.value })}
@@ -94,7 +95,10 @@ const FormFieldBuilder = ({
               />
             )}
             {field.type === "image" && (
-              <span className="text-[10px] text-muted-foreground flex-1">User will upload an image for this field</span>
+              <span className="text-[10px] text-muted-foreground flex-1">User will upload an image</span>
+            )}
+            {field.type === "date" && (
+              <span className="text-[10px] text-muted-foreground flex-1">User will pick a date</span>
             )}
             <div className="flex items-center gap-1">
               <Switch checked={field.required} onCheckedChange={(v) => updateField(field.id, { required: v })} className="scale-75" />
@@ -132,6 +136,8 @@ const AdminTasks = () => {
   const [hasRefund, setHasRefund] = useState(false);
   const [formFields, setFormFields] = useState<FormField[]>([]);
   const [secondFormFields, setSecondFormFields] = useState<FormField[]>([]);
+  const [guideVideoUrl, setGuideVideoUrl] = useState("");
+  const [guideText, setGuideText] = useState("");
 
   const { data: tasks = [] } = useQuery({
     queryKey: ["admin-tasks"],
@@ -146,6 +152,7 @@ const AdminTasks = () => {
     setTitle(""); setDescription(""); setReviewText(""); setTaskLink("");
     setReward(""); setPoints(""); setSlots(""); setCategory("");
     setApprovalDays("1"); setHasRefund(false); setFormFields([]); setSecondFormFields([]);
+    setGuideVideoUrl(""); setGuideText("");
   };
 
   const openDialog = (task?: Tables<"tasks">) => {
@@ -159,17 +166,33 @@ const AdminTasks = () => {
       setPoints(String(task.points));
       setSlots(String(task.slots_total));
       setCategory(task.category || "");
-      setApprovalDays(String((task as any).approval_days || 1));
-      setHasRefund((task as any).has_refund || false);
-      const fields = (task as any).form_fields;
-      setFormFields(Array.isArray(fields) ? fields : []);
-      const sFields = (task as any).second_form_fields;
-      setSecondFormFields(Array.isArray(sFields) ? sFields : []);
+      setApprovalDays(String(task.approval_days || 1));
+      setHasRefund(task.has_refund || false);
+      const fields = task.form_fields;
+      setFormFields(Array.isArray(fields) ? fields as any : []);
+      const sFields = task.second_form_fields;
+      setSecondFormFields(Array.isArray(sFields) ? sFields as any : []);
+      setGuideVideoUrl((task as any).guide_video_url || "");
+      setGuideText((task as any).guide_text || "");
     } else {
       setEditing(null);
       resetForm();
     }
     setDialogOpen(true);
+  };
+
+  const handleGuideVideoUpload = async (file: File) => {
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `guides/guide_${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("screenshots").upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data } = supabase.storage.from("screenshots").getPublicUrl(path);
+      setGuideVideoUrl(data.publicUrl);
+      toast.success("Video uploaded!");
+    } catch (err: any) {
+      toast.error(err.message || "Upload failed");
+    }
   };
 
   const saveMutation = useMutation({
@@ -183,6 +206,8 @@ const AdminTasks = () => {
         has_refund: hasRefund,
         form_fields: formFields.filter((f) => f.label.trim()),
         second_form_fields: secondFormFields.filter((f) => f.label.trim()),
+        guide_video_url: guideVideoUrl || null,
+        guide_text: guideText || null,
       };
       if (editing) {
         delete payload.slots_remaining;
@@ -228,41 +253,44 @@ const AdminTasks = () => {
       </motion.div>
 
       <div className="space-y-3">
-        {tasks.map((task, i) => (
-          <motion.div key={task.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-            <GlassCard className="flex flex-col md:flex-row md:items-center gap-3">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <h3 className="font-display font-bold text-foreground">{task.title}</h3>
-                  <StatusBadge status={task.status} />
-                  {(task as any).has_refund && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-warning/20 text-warning font-medium">Refund</span>
-                  )}
-                  {((task as any).form_fields as any[])?.length > 0 && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary/20 text-secondary font-medium">Form</span>
-                  )}
-                  {((task as any).second_form_fields as any[])?.length > 0 && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary font-medium">2nd Form</span>
-                  )}
+        {tasks.map((task, i) => {
+          const booked = task.slots_total - task.slots_remaining;
+          return (
+            <motion.div key={task.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+              <GlassCard className="flex flex-col md:flex-row md:items-center gap-3">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <h3 className="font-display font-bold text-foreground">{task.title}</h3>
+                    <StatusBadge status={task.status} />
+                    {task.has_refund && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-warning/20 text-warning font-medium">Refund</span>
+                    )}
+                    {((task.form_fields as any[])?.length > 0) && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary/20 text-secondary font-medium">Form</span>
+                    )}
+                    {((task.second_form_fields as any[])?.length > 0) && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary font-medium">2nd Form</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    ₹{task.reward} · {task.points} pts · {booked} booked / {task.slots_total} total · Approval: {task.approval_days || 1} days
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  ₹{task.reward} · {task.points} pts · {task.slots_remaining}/{task.slots_total} slots · Approval: {(task as any).approval_days || 1} days
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="border-border/30" onClick={() => toggleMutation.mutate(task)}>
-                  {task.status === "active" ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-                </Button>
-                <Button size="sm" variant="outline" className="border-border/30" onClick={() => openDialog(task)}>
-                  <Edit className="h-3 w-3" />
-                </Button>
-                <Button size="sm" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => deleteMutation.mutate(task.id)}>
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            </GlassCard>
-          </motion.div>
-        ))}
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="border-border/30" onClick={() => toggleMutation.mutate(task)}>
+                    {task.status === "active" ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+                  </Button>
+                  <Button size="sm" variant="outline" className="border-border/30" onClick={() => openDialog(task)}>
+                    <Edit className="h-3 w-3" />
+                  </Button>
+                  <Button size="sm" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => deleteMutation.mutate(task.id)}>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              </GlassCard>
+            </motion.div>
+          );
+        })}
         {tasks.length === 0 && <p className="text-center text-muted-foreground py-8">No tasks yet. Create one!</p>}
       </div>
 
@@ -287,10 +315,27 @@ const AdminTasks = () => {
                 <label className="text-xs font-medium text-foreground">Refund Form (7 days)</label>
               </div>
             </div>
-            <div><label className="text-xs font-medium text-foreground mb-1 block">Description</label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Task description..." className="bg-muted/50 border-border/30" rows={2} /></div>
+            <div><label className="text-xs font-medium text-foreground mb-1 block">Description</label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Task description..." className="bg-muted/50 border-border/30" rows={3} /></div>
             <div><label className="text-xs font-medium text-foreground mb-1 block">Review Text</label><Textarea value={reviewText} onChange={(e) => setReviewText(e.target.value)} placeholder="Text users will copy..." className="bg-muted/50 border-border/30" rows={3} /></div>
 
-            {/* Copy form template from existing task */}
+            {/* How-To Guide */}
+            <div className="border border-border/30 rounded-xl p-3 space-y-2">
+              <label className="text-xs font-semibold text-foreground block">📖 How-To Guide (shown to users)</label>
+              <div><label className="text-[10px] text-muted-foreground mb-1 block">Guide Video URL</label>
+                <Input value={guideVideoUrl} onChange={(e) => setGuideVideoUrl(e.target.value)} placeholder="https://... or upload below" className="bg-muted/50 border-border/30 text-xs" />
+              </div>
+              <label className="cursor-pointer">
+                <div className="flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border/50 py-2 px-3 text-xs text-muted-foreground hover:border-primary/50 transition-colors">
+                  Upload video file
+                </div>
+                <input type="file" accept="video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleGuideVideoUpload(f); }} />
+              </label>
+              <div><label className="text-[10px] text-muted-foreground mb-1 block">Guide Text / Instructions</label>
+                <Textarea value={guideText} onChange={(e) => setGuideText(e.target.value)} placeholder="Step by step instructions..." className="bg-muted/50 border-border/30 text-xs" rows={3} />
+              </div>
+            </div>
+
+            {/* Copy form template */}
             {tasks.length > 0 && !editing && (
               <div className="border border-border/30 rounded-xl p-3">
                 <label className="text-xs font-semibold text-foreground mb-2 block flex items-center gap-1">
@@ -299,13 +344,13 @@ const AdminTasks = () => {
                 <Select onValueChange={(taskId) => {
                   const srcTask = tasks.find(t => t.id === taskId);
                   if (srcTask) {
-                    const f1 = (srcTask as any).form_fields;
-                    const f2 = (srcTask as any).second_form_fields;
+                    const f1 = srcTask.form_fields;
+                    const f2 = srcTask.second_form_fields;
                     if (Array.isArray(f1) && f1.length > 0) {
-                      setFormFields(f1.map((f: any) => ({ ...f, id: crypto.randomUUID() })));
+                      setFormFields((f1 as any).map((f: any) => ({ ...f, id: crypto.randomUUID() })));
                     }
                     if (Array.isArray(f2) && f2.length > 0) {
-                      setSecondFormFields(f2.map((f: any) => ({ ...f, id: crypto.randomUUID() })));
+                      setSecondFormFields((f2 as any).map((f: any) => ({ ...f, id: crypto.randomUUID() })));
                     }
                     toast.success("Form fields copied! You can edit them below.");
                   }
@@ -315,8 +360,8 @@ const AdminTasks = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {tasks.filter(t => {
-                      const f1 = (t as any).form_fields;
-                      const f2 = (t as any).second_form_fields;
+                      const f1 = t.form_fields;
+                      const f2 = t.second_form_fields;
                       return (Array.isArray(f1) && f1.length > 0) || (Array.isArray(f2) && f2.length > 0);
                     }).map(t => (
                       <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
@@ -336,12 +381,12 @@ const AdminTasks = () => {
               </TabsContent>
               <TabsContent value="form2">
                 <FormFieldBuilder fields={secondFormFields} onChange={setSecondFormFields} label="2nd Form - Custom Fields (Admin activates)" />
-                <p className="text-[10px] text-muted-foreground mt-2">⚡ 2nd form sirf tab active hoga jab admin submission me manually activate karega.</p>
+                <p className="text-[10px] text-muted-foreground mt-2">⚡ 2nd form sirf tab active hoga jab admin submission me manually activate karega. User ko 3 din baad dikhega.</p>
               </TabsContent>
             </Tabs>
 
             <Button className="w-full gradient-primary border-0 font-display font-semibold text-primary-foreground" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-              {saveMutation.isPending ? "Saving..." : editing ? "Save Changes" : "Create Task"}
+              {saveMutation.isPending ? "Saving..." : editing ? "Update Task" : "Create Task"}
             </Button>
           </div>
         </DialogContent>
