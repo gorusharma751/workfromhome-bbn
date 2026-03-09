@@ -1,5 +1,6 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { LayoutDashboard, ListTodo, FileCheck, Users, Wallet, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, ListTodo, FileCheck, Users, Wallet, Settings, LogOut, Bell, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -9,12 +10,14 @@ const navItems = [
   { path: "/admin/users", label: "Users", icon: Users },
   { path: "/admin/referrals", label: "Referrals", icon: Settings },
   { path: "/admin/withdrawals", label: "Withdrawals", icon: Wallet },
+  { path: "/admin/notifications", label: "Notifications", icon: Bell },
   { path: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const isSubPage = location.pathname !== "/admin";
 
   return (
     <div className="flex min-h-screen">
@@ -56,8 +59,15 @@ const AdminLayout = () => {
       <div className="flex flex-1 flex-col">
         <header className="md:hidden glass border-b border-border/30 px-4 py-3">
           <div className="flex items-center justify-between">
-            <span className="font-display text-lg font-bold gradient-text">Admin</span>
-            <div className="flex gap-1">
+            <div className="flex items-center gap-2">
+              {isSubPage && (
+                <Button variant="ghost" size="sm" className="p-1" onClick={() => navigate(-1)}>
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              )}
+              <span className="font-display text-lg font-bold gradient-text">Admin</span>
+            </div>
+            <div className="flex gap-1 overflow-x-auto scrollbar-hide">
               {navItems.map((item) => {
                 const isActive = location.pathname === item.path;
                 return (
@@ -65,7 +75,7 @@ const AdminLayout = () => {
                     key={item.path}
                     onClick={() => navigate(item.path)}
                     className={cn(
-                      "rounded-lg p-2 transition-colors",
+                      "rounded-lg p-2 transition-colors flex-shrink-0",
                       isActive ? "gradient-primary text-primary-foreground" : "text-muted-foreground"
                     )}
                   >
