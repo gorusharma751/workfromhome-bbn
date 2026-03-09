@@ -35,6 +35,27 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           binance_address: string | null
@@ -200,6 +221,8 @@ export type Database = {
           description: string | null
           end_date: string | null
           form_fields: Json | null
+          guide_text: string | null
+          guide_video_url: string | null
           has_refund: boolean | null
           id: string
           points: number
@@ -221,6 +244,8 @@ export type Database = {
           description?: string | null
           end_date?: string | null
           form_fields?: Json | null
+          guide_text?: string | null
+          guide_video_url?: string | null
           has_refund?: boolean | null
           id?: string
           points?: number
@@ -242,6 +267,8 @@ export type Database = {
           description?: string | null
           end_date?: string | null
           form_fields?: Json | null
+          guide_text?: string | null
+          guide_video_url?: string | null
           has_refund?: boolean | null
           id?: string
           points?: number
