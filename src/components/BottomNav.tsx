@@ -24,7 +24,7 @@ const BottomNav = () => {
       {/* Top notification bar */}
       <div className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/30 px-4 py-2">
         <div className="mx-auto max-w-md flex items-center justify-between">
-          <span className="font-display text-sm font-bold gradient-text">WorkFromHome</span>
+          <span className="font-display text-sm font-bold gradient-text">adfinty - Work From Home</span>
           <NotificationBell />
         </div>
       </div>
