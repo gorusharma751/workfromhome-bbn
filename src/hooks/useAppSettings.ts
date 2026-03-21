@@ -28,6 +28,7 @@ interface AppSettings {
 
 const DEFAULT_BRANDING: AppBranding = { app_name: "WorkFromHome", logo_url: "" };
 const DEFAULT_TELEGRAM: TelegramLinks = { group_link: "https://t.me/+RhU9pH42KwYwOGE1", support_link: "https://t.me/workfromhome3349" };
+const DEFAULT_ANNOUNCEMENT: Announcement = { text: "", active: false };
 
 const appendVersionToUrl = (url: string, version?: string) => {
   if (!url) return "";
