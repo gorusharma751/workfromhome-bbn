@@ -47,6 +47,7 @@ const appendVersionToUrl = (url: string, version?: string) => {
 export const useAppSettings = (): AppSettings => {
   const [branding, setBranding] = useState<AppBranding>(DEFAULT_BRANDING);
   const [telegram, setTelegram] = useState<TelegramLinks>(DEFAULT_TELEGRAM);
+  const [announcement, setAnnouncement] = useState<Announcement>(DEFAULT_ANNOUNCEMENT);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
