@@ -4,6 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 interface AppBranding {
   app_name: string;
   logo_url: string;
+  tagline?: string;
+  primary_color?: string;
+  accent_color?: string;
 }
 
 interface TelegramLinks {
@@ -11,9 +14,15 @@ interface TelegramLinks {
   support_link: string;
 }
 
+interface Announcement {
+  text: string;
+  active: boolean;
+}
+
 interface AppSettings {
   branding: AppBranding;
   telegram: TelegramLinks;
+  announcement: Announcement;
   loading: boolean;
 }
 
