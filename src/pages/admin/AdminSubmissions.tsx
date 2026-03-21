@@ -174,7 +174,7 @@ const AdminSubmissions = () => {
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground">{sub.profiles?.name || "Unknown"}</p>
+                  <p className="font-medium text-foreground">{sub.user_name || "Unknown"}</p>
                   <p className="text-xs text-muted-foreground">{sub.tasks?.title || "Unknown"}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{new Date(sub.submitted_at).toLocaleString()}</p>
                   {sub.comment && <p className="text-xs text-foreground mt-1">"{sub.comment}"</p>}
