@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Edit, Trash2, Pause, Play, X, Copy, RotateCcw } from "lucide-react";
+import { Plus, Edit, Trash2, Pause, Play, X, Copy, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -94,6 +94,7 @@ const AdminTasks = () => {
   const [category, setCategory] = useState("");
   const [approvalDays, setApprovalDays] = useState("1");
   const [hasRefund, setHasRefund] = useState(false);
+  const [enableSecondForm, setEnableSecondForm] = useState(false);
   const [formFields, setFormFields] = useState<FormField[]>([]);
   const [secondFormFields, setSecondFormFields] = useState<FormField[]>([]);
   const [guideVideoUrl, setGuideVideoUrl] = useState("");
@@ -123,7 +124,8 @@ const AdminTasks = () => {
   const resetForm = () => {
     setTitle(""); setDescription(""); setTaskLink("");
     setReward(""); setPoints(""); setSlots(""); setCategory("");
-    setApprovalDays("1"); setHasRefund(false); setFormFields([]); setSecondFormFields([]);
+    setApprovalDays("1"); setHasRefund(false); setEnableSecondForm(false);
+    setFormFields([]); setSecondFormFields([]);
     setGuideVideoUrl(""); setGuideText(""); setSlotReviews([]);
   };
 
@@ -135,8 +137,10 @@ const AdminTasks = () => {
       setReward(String(task.reward)); setPoints(String(task.points));
       setSlots(String(task.slots_total)); setCategory(task.category || "");
       setApprovalDays(String(task.approval_days || 1)); setHasRefund(task.has_refund || false);
+      const sf = Array.isArray(task.second_form_fields) ? task.second_form_fields as any : [];
+      setEnableSecondForm(sf.length > 0);
       setFormFields(Array.isArray(task.form_fields) ? task.form_fields as any : []);
-      setSecondFormFields(Array.isArray(task.second_form_fields) ? task.second_form_fields as any : []);
+      setSecondFormFields(sf);
       setGuideVideoUrl((task as any).guide_video_url || "");
       setGuideText((task as any).guide_text || "");
     } else {
@@ -168,7 +172,7 @@ const AdminTasks = () => {
         slots_total: slotCount, slots_remaining: slotCount,
         category, approval_days: parseInt(approvalDays) || 1, has_refund: hasRefund,
         form_fields: formFields.filter((f) => f.label.trim()),
-        second_form_fields: secondFormFields.filter((f) => f.label.trim()),
+        second_form_fields: enableSecondForm ? secondFormFields.filter((f) => f.label.trim()) : [],
         guide_video_url: guideVideoUrl || null, guide_text: guideText || null,
       };
 
@@ -185,14 +189,16 @@ const AdminTasks = () => {
 
         // Create slot rows for new tasks
         if (slotReviews.length > 0) {
-          const slotRows = slotReviews.map((text, i) => ({
+          const slotRows = slotReviews.filter(t => t.trim()).map((text, i) => ({
             task_id: taskId,
             slot_number: i + 1,
             review_text: text,
             status: "available",
           }));
-          const { error: slotErr } = await supabase.from("task_slots").insert(slotRows);
-          if (slotErr) throw slotErr;
+          if (slotRows.length > 0) {
+            const { error: slotErr } = await supabase.from("task_slots").insert(slotRows);
+            if (slotErr) throw slotErr;
+          }
         }
       }
     },
@@ -229,7 +235,6 @@ const AdminTasks = () => {
         assigned_at: null,
       }).eq("id", slotId);
       if (error) throw error;
-      // Update task slots_remaining
       if (slotsTask) {
         const { data: taskData } = await supabase.from("tasks").select("slots_remaining").eq("id", slotsTask.id).single();
         if (taskData) {
@@ -247,25 +252,32 @@ const AdminTasks = () => {
 
   const saveSlotsMutation = useMutation({
     mutationFn: async ({ taskId, reviews }: { taskId: string; reviews: string[] }) => {
-      // Delete existing slots that are available (don't touch booked/completed)
-      await supabase.from("task_slots").delete().eq("task_id", taskId).eq("status", "available");
-      // Get existing slot numbers
       const { data: existing } = await supabase.from("task_slots").select("slot_number").eq("task_id", taskId);
-      const existingNums = new Set((existing || []).map((s: any) => s.slot_number));
-      // Insert new slots
-      const newSlots = reviews.map((text, i) => {
-        let num = i + 1;
-        while (existingNums.has(num)) num++;
-        existingNums.add(num);
-        return { task_id: taskId, slot_number: num, review_text: text, status: "available" };
-      }).filter(s => s.review_text.trim());
+      const existingNums = (existing || []).map((s: any) => s.slot_number);
+      const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : 0;
+
+      const newSlots = reviews.filter(t => t.trim()).map((text, i) => ({
+        task_id: taskId,
+        slot_number: maxNum + i + 1,
+        review_text: text,
+        status: "available",
+      }));
       if (newSlots.length > 0) {
         const { error } = await supabase.from("task_slots").insert(newSlots);
         if (error) throw error;
+        // Update slots_total and slots_remaining
+        const { data: task } = await supabase.from("tasks").select("slots_total, slots_remaining").eq("id", taskId).single();
+        if (task) {
+          await supabase.from("tasks").update({
+            slots_total: task.slots_total + newSlots.length,
+            slots_remaining: task.slots_remaining + newSlots.length,
+          }).eq("id", taskId);
+        }
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-task-slots", slotsTask?.id] });
+      queryClient.invalidateQueries({ queryKey: ["admin-tasks"] });
       toast.success("Slots saved!");
     },
     onError: (err: any) => toast.error(err.message),
@@ -279,7 +291,6 @@ const AdminTasks = () => {
     setSlotsDialogOpen(true);
   };
 
-  // When creating a new task, update slot reviews array based on slot count
   const slotCount = parseInt(slots) || 0;
   const handleSlotCountChange = (val: string) => {
     setSlots(val);
@@ -293,8 +304,8 @@ const AdminTasks = () => {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-between mb-6">
-        <h1 className="font-display text-2xl font-bold gradient-text">Manage Tasks</h1>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-between mb-6 flex-wrap gap-2">
+        <h1 className="font-display text-xl md:text-2xl font-bold gradient-text">Manage Tasks</h1>
         <Button onClick={() => openDialog()} className="gradient-primary border-0 text-primary-foreground font-display text-sm">
           <Plus className="h-4 w-4" /> Add Task
         </Button>
@@ -305,28 +316,31 @@ const AdminTasks = () => {
           const booked = task.slots_total - task.slots_remaining;
           return (
             <motion.div key={task.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-              <GlassCard className="flex flex-col md:flex-row md:items-center gap-3">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <h3 className="font-display font-bold text-foreground">{task.title}</h3>
-                    <StatusBadge status={task.status} />
-                    {task.has_refund && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-warning/20 text-warning font-medium">Refund</span>}
+              <GlassCard className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <h3 className="font-display font-bold text-foreground text-sm">{task.title}</h3>
+                      <StatusBadge status={task.status} />
+                      {task.has_refund && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-warning/20 text-warning font-medium">Refund</span>}
+                      {((task.second_form_fields as any[])?.length > 0) && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary/20 text-secondary font-medium">2nd Form</span>}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      ₹{task.reward} · {task.points} pts · {booked} booked / {task.slots_total} total
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    ₹{task.reward} · {task.points} pts · {booked} booked / {task.slots_total} total
-                  </p>
                 </div>
-                <div className="flex gap-2 flex-wrap">
-                  <Button size="sm" variant="outline" className="border-border/30 text-xs" onClick={() => openSlotsDialog(task)}>
+                <div className="flex gap-1.5 flex-wrap">
+                  <Button size="sm" variant="outline" className="border-border/30 text-xs h-8" onClick={() => openSlotsDialog(task)}>
                     Slots
                   </Button>
-                  <Button size="sm" variant="outline" className="border-border/30" onClick={() => toggleMutation.mutate(task)}>
+                  <Button size="sm" variant="outline" className="border-border/30 h-8" onClick={() => toggleMutation.mutate(task)}>
                     {task.status === "active" ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
                   </Button>
-                  <Button size="sm" variant="outline" className="border-border/30" onClick={() => openDialog(task)}>
+                  <Button size="sm" variant="outline" className="border-border/30 h-8" onClick={() => openDialog(task)}>
                     <Edit className="h-3 w-3" />
                   </Button>
-                  <Button size="sm" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => deleteMutation.mutate(task.id)}>
+                  <Button size="sm" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10 h-8" onClick={() => deleteMutation.mutate(task.id)}>
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
@@ -361,9 +375,19 @@ const AdminTasks = () => {
                 <label className="text-xs font-medium text-foreground">Refund Form</label>
               </div>
             </div>
+
+            {/* 2nd Form Toggle */}
+            <div className="flex items-center gap-3 rounded-xl bg-muted/30 p-3">
+              <Switch checked={enableSecondForm} onCheckedChange={setEnableSecondForm} />
+              <div>
+                <label className="text-xs font-medium text-foreground">Enable 2nd Form</label>
+                <p className="text-[10px] text-muted-foreground">Admin se activate hoga, user ko 3 din baad dikhega</p>
+              </div>
+            </div>
+
             <div><label className="text-xs font-medium text-foreground mb-1 block">Description</label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Task description..." className="bg-muted/50 border-border/30" rows={3} /></div>
 
-            {/* Slot Review Texts (only for new tasks) */}
+            {/* Slot Review Texts (for new tasks) */}
             {!editing && slotCount > 0 && (
               <div className="border border-border/30 rounded-xl p-3 space-y-2">
                 <label className="text-xs font-semibold text-foreground block">📝 Review Text per Slot ({slotCount} slots)</label>
@@ -402,7 +426,10 @@ const AdminTasks = () => {
                     const f1 = srcTask.form_fields;
                     const f2 = srcTask.second_form_fields;
                     if (Array.isArray(f1) && f1.length > 0) setFormFields((f1 as any).map((f: any) => ({ ...f, id: crypto.randomUUID() })));
-                    if (Array.isArray(f2) && f2.length > 0) setSecondFormFields((f2 as any).map((f: any) => ({ ...f, id: crypto.randomUUID() })));
+                    if (Array.isArray(f2) && f2.length > 0) {
+                      setSecondFormFields((f2 as any).map((f: any) => ({ ...f, id: crypto.randomUUID() })));
+                      setEnableSecondForm(true);
+                    }
                     toast.success("Form fields copied!");
                   }
                 }}>
@@ -416,19 +443,16 @@ const AdminTasks = () => {
               </div>
             )}
 
-            <Tabs defaultValue="form1" className="w-full">
-              <TabsList className="w-full grid grid-cols-2">
-                <TabsTrigger value="form1">1st Form Fields</TabsTrigger>
-                <TabsTrigger value="form2">2nd Form Fields</TabsTrigger>
-              </TabsList>
-              <TabsContent value="form1">
-                <FormFieldBuilder fields={formFields} onChange={setFormFields} label="1st Form - Custom Fields" />
-              </TabsContent>
-              <TabsContent value="form2">
+            {/* Form Fields */}
+            <FormFieldBuilder fields={formFields} onChange={setFormFields} label="1st Form - Custom Fields" />
+
+            {/* 2nd Form Fields - only when enabled */}
+            {enableSecondForm && (
+              <div>
                 <FormFieldBuilder fields={secondFormFields} onChange={setSecondFormFields} label="2nd Form - Custom Fields" />
-                <p className="text-[10px] text-muted-foreground mt-2">⚡ 2nd form sirf admin activate karega. User ko 3 din baad dikhega.</p>
-              </TabsContent>
-            </Tabs>
+                <p className="text-[10px] text-muted-foreground mt-2">⚡ 2nd form sirf admin activate karega submissions page se. User ko 3 din baad dikhega.</p>
+              </div>
+            )}
 
             <Button className="w-full gradient-primary border-0 font-display font-semibold text-primary-foreground" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
               {saveMutation.isPending ? "Saving..." : editing ? "Update Task" : "Create Task"}
@@ -441,28 +465,44 @@ const AdminTasks = () => {
       <Dialog open={slotsDialogOpen} onOpenChange={setSlotsDialogOpen}>
         <DialogContent className="glass-card border-border/30 sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-display gradient-text">Slot Management - {slotsTask?.title}</DialogTitle>
+            <DialogTitle className="font-display gradient-text text-base">Slots - {slotsTask?.title}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
+            {/* Summary */}
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="rounded-lg bg-success/10 p-2">
+                <p className="text-lg font-bold text-success">{taskSlots.filter((s: any) => s.status === "available").length}</p>
+                <p className="text-[10px] text-muted-foreground">Available</p>
+              </div>
+              <div className="rounded-lg bg-warning/10 p-2">
+                <p className="text-lg font-bold text-warning">{taskSlots.filter((s: any) => s.status === "booked").length}</p>
+                <p className="text-[10px] text-muted-foreground">Booked</p>
+              </div>
+              <div className="rounded-lg bg-primary/10 p-2">
+                <p className="text-lg font-bold text-primary">{taskSlots.filter((s: any) => s.status === "completed").length}</p>
+                <p className="text-[10px] text-muted-foreground">Completed</p>
+              </div>
+            </div>
+
             {/* Existing slots */}
-            <p className="text-xs font-semibold text-foreground">Existing Slots ({taskSlots.length})</p>
+            <p className="text-xs font-semibold text-foreground">All Slots ({taskSlots.length})</p>
             <div className="max-h-60 overflow-y-auto space-y-2">
               {taskSlots.map((slot: any) => (
-                <div key={slot.id} className="rounded-lg bg-muted/30 p-2 flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-muted-foreground w-6">#{slot.slot_number}</span>
+                <div key={slot.id} className="rounded-lg bg-muted/30 p-2 flex items-start gap-2">
+                  <span className="text-[10px] font-bold text-muted-foreground w-6 flex-shrink-0 mt-0.5">#{slot.slot_number}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-foreground truncate">{slot.review_text || "(no text)"}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <p className="text-xs text-foreground break-words">{slot.review_text || "(no text)"}</p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
                         slot.status === "available" ? "bg-success/20 text-success" :
                         slot.status === "booked" ? "bg-warning/20 text-warning" :
                         "bg-primary/20 text-primary"
                       }`}>{slot.status}</span>
-                      {slot.assigned_user_id && <span className="text-[10px] text-muted-foreground">User: {slot.assigned_user_id.slice(0, 8)}</span>}
+                      {slot.assigned_user_id && <span className="text-[10px] text-muted-foreground">User: {slot.assigned_user_id.slice(0, 8)}...</span>}
                     </div>
                   </div>
                   {slot.status !== "available" && (
-                    <Button size="sm" variant="outline" className="border-border/30 text-xs h-7" onClick={() => resetSlotMutation.mutate(slot.id)} disabled={resetSlotMutation.isPending}>
+                    <Button size="sm" variant="outline" className="border-border/30 text-xs h-7 flex-shrink-0" onClick={() => resetSlotMutation.mutate(slot.id)} disabled={resetSlotMutation.isPending}>
                       <RotateCcw className="h-3 w-3" />
                     </Button>
                   )}
