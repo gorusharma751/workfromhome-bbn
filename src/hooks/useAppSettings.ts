@@ -110,5 +110,5 @@ export const useAppSettings = (): AppSettings => {
     };
   }, [load]);
 
-  return { branding, telegram, loading };
+  return { branding, telegram, announcement, loading };
 };
