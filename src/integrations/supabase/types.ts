@@ -35,6 +35,45 @@ export type Database = {
         }
         Relationships: []
       }
+      deals: {
+        Row: {
+          active: boolean
+          created_at: string
+          deal_link: string | null
+          description: string | null
+          id: string
+          photo_url: string | null
+          price: number
+          rules: string | null
+          title: string
+          total_slots: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          deal_link?: string | null
+          description?: string | null
+          id?: string
+          photo_url?: string | null
+          price?: number
+          rules?: string | null
+          title: string
+          total_slots?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          deal_link?: string | null
+          description?: string | null
+          id?: string
+          photo_url?: string | null
+          price?: number
+          rules?: string | null
+          title?: string
+          total_slots?: number
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -55,6 +94,53 @@ export type Database = {
           title?: string
         }
         Relationships: []
+      }
+      orders: {
+        Row: {
+          address: string
+          created_at: string
+          deal_id: string
+          full_name: string
+          id: string
+          note: string | null
+          phone: string
+          quantity: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          deal_id: string
+          full_name: string
+          id?: string
+          note?: string | null
+          phone: string
+          quantity?: number
+          status?: string
+          user_id: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          deal_id?: string
+          full_name?: string
+          id?: string
+          note?: string | null
+          phone?: string
+          quantity?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -159,6 +245,82 @@ export type Database = {
             columns: ["referrer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      refunds: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          order_id: string
+          reason: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          order_id: string
+          reason: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          order_id?: string
+          reason?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refunds_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_slots: {
+        Row: {
+          assigned_at: string | null
+          assigned_user_id: string | null
+          id: string
+          review_text: string
+          slot_number: number
+          status: string
+          task_id: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_user_id?: string | null
+          id?: string
+          review_text?: string
+          slot_number: number
+          status?: string
+          task_id: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_user_id?: string | null
+          id?: string
+          review_text?: string
+          slot_number?: number
+          status?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_slots_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
         ]
