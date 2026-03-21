@@ -82,7 +82,7 @@ const AdminDashboard = () => {
             <tbody>
               {recentSubmissions.map((s: any) => (
                 <tr key={s.id} className="border-b border-border/10 last:border-0">
-                  <td className="py-3 text-foreground">{s.profiles?.name || "Unknown"}</td>
+                  <td className="py-3 text-foreground">{s.user_name || "Unknown"}</td>
                   <td className="py-3 text-muted-foreground">{s.tasks?.title || "Unknown"}</td>
                   <td className="py-3"><StatusBadge status={s.status} /></td>
                 </tr>
