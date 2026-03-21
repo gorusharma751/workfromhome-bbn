@@ -28,12 +28,20 @@ const AdminDashboard = () => {
   const { data: recentSubmissions = [] } = useQuery({
     queryKey: ["admin-recent-submissions"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data: subs } = await supabase
         .from("task_submissions")
-        .select("*, profiles!task_submissions_user_id_fkey(name), tasks!task_submissions_task_id_fkey(title)")
+        .select("*, tasks(title)")
         .order("submitted_at", { ascending: false })
         .limit(5);
-      return data || [];
+      if (!subs || subs.length === 0) return [];
+      // Fetch profile names for these user_ids
+      const userIds = [...new Set(subs.map((s: any) => s.user_id))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, name")
+        .in("user_id", userIds);
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p.name]));
+      return subs.map((s: any) => ({ ...s, user_name: profileMap.get(s.user_id) || "Unknown" }));
     },
   });
 
