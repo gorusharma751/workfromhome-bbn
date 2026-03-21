@@ -16,12 +16,19 @@ const AdminSubmissions = () => {
   const { data: submissions = [] } = useQuery({
     queryKey: ["admin-submissions"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: subs, error } = await supabase
         .from("task_submissions")
-        .select("*, profiles!task_submissions_user_id_fkey(name), tasks!task_submissions_task_id_fkey(title, reward, points, second_form_fields)")
+        .select("*, tasks(title, reward, points, second_form_fields)")
         .order("submitted_at", { ascending: false });
       if (error) throw error;
-      return data;
+      if (!subs || subs.length === 0) return [];
+      const userIds = [...new Set(subs.map((s: any) => s.user_id))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, name")
+        .in("user_id", userIds);
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p.name]));
+      return subs.map((s: any) => ({ ...s, user_name: profileMap.get(s.user_id) || "Unknown" }));
     },
   });
 
