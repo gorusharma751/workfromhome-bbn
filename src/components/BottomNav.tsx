@@ -18,7 +18,7 @@ const BottomNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { branding } = useAppSettings();
+  const { branding, announcement } = useAppSettings();
 
   if (location.pathname.startsWith("/admin") || location.pathname === "/login" || location.pathname === "/signup" || !user) return null;
 
