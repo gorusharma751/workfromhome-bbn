@@ -12,6 +12,8 @@ import MySubmissionsPage from "./pages/MySubmissionsPage";
 import ReferEarnPage from "./pages/ReferEarnPage";
 import ProfilePage from "./pages/ProfilePage";
 import WithdrawPage from "./pages/WithdrawPage";
+import DealsPage from "./pages/DealsPage";
+import OrderHistoryPage from "./pages/OrderHistoryPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import AdminLayout from "./pages/admin/AdminLayout";
@@ -23,6 +25,9 @@ import AdminWithdrawals from "./pages/admin/AdminWithdrawals";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminNotifications from "./pages/admin/AdminNotifications";
+import AdminDeals from "./pages/admin/AdminDeals";
+import AdminOrders from "./pages/admin/AdminOrders";
+import AdminRefunds from "./pages/admin/AdminRefundsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +45,8 @@ const App = () => (
             <Route path="/" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
             <Route path="/my-submissions" element={<ProtectedRoute><MySubmissionsPage /></ProtectedRoute>} />
             <Route path="/refer" element={<ProtectedRoute><ReferEarnPage /></ProtectedRoute>} />
+            <Route path="/deals" element={<ProtectedRoute><DealsPage /></ProtectedRoute>} />
+            <Route path="/orders" element={<ProtectedRoute><OrderHistoryPage /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             <Route path="/withdraw" element={<ProtectedRoute><WithdrawPage /></ProtectedRoute>} />
             <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
@@ -51,6 +58,9 @@ const App = () => (
               <Route path="withdrawals" element={<AdminWithdrawals />} />
               <Route path="notifications" element={<AdminNotifications />} />
               <Route path="settings" element={<AdminSettings />} />
+              <Route path="deals" element={<AdminDeals />} />
+              <Route path="orders" element={<AdminOrders />} />
+              <Route path="refunds" element={<AdminRefunds />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
