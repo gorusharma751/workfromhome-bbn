@@ -175,7 +175,8 @@ const ProfilePage = () => {
             {[
               { icon: Wallet, label: "Withdraw Funds", sub: "Transfer to UPI or Binance", action: () => navigate("/withdraw") },
               { icon: Bitcoin, label: "Binance Wallet", sub: profile.binance_address || "Not added", action: () => toast.info("Coming soon!") },
-              { icon: ListChecks, label: "My Submissions", sub: "View task history", action: () => toast.info("Coming soon!") },
+              { icon: ListChecks, label: "My Submissions", sub: "View task history", action: () => navigate("/my-submissions") },
+              { icon: Wallet, label: "My Orders", sub: "View deal orders & refunds", action: () => navigate("/orders") },
               ...(isAdmin ? [{ icon: Award, label: "Admin Panel", sub: "Manage platform", action: () => navigate("/admin") }] : []),
             ].map((item, i) => (
               <button key={i} onClick={item.action} className="flex w-full items-center gap-3 border-b border-border/20 px-5 py-4 text-left transition-colors hover:bg-muted/30 last:border-0">
