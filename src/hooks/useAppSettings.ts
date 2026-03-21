@@ -55,7 +55,7 @@ export const useAppSettings = (): AppSettings => {
       const { data } = await supabase
         .from("admin_settings")
         .select("key, value, updated_at")
-        .in("key", ["app_branding", "telegram"]);
+        .in("key", ["app_branding", "telegram", "announcement"]);
 
       if (data) {
         for (const row of data) {
