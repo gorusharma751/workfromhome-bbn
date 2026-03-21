@@ -64,6 +64,9 @@ export const useAppSettings = (): AppSettings => {
             setBranding({
               app_name: v.app_name || DEFAULT_BRANDING.app_name,
               logo_url: v.logo_url ? appendVersionToUrl(v.logo_url, row.updated_at) : "",
+              tagline: v.tagline || "",
+              primary_color: v.primary_color || "",
+              accent_color: v.accent_color || "",
             });
           }
 
