@@ -39,6 +39,15 @@ const BottomNav = () => {
         </div>
       </div>
 
+      {/* Announcement ticker */}
+      {announcement.active && announcement.text && (
+        <div className="fixed top-[41px] left-0 right-0 z-40 bg-primary/10 border-b border-primary/20 overflow-hidden">
+          <div className="animate-marquee whitespace-nowrap py-1.5 px-4">
+            <span className="text-xs font-medium text-primary">{announcement.text}</span>
+          </div>
+        </div>
+      )}
+
       {/* Bottom nav */}
       <div className="fixed bottom-0 left-0 right-0 z-50 safe-bottom">
         <div className="glass border-t border-border/30 px-2 pt-2 pb-1">
