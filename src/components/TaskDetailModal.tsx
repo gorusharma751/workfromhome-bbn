@@ -98,8 +98,19 @@ const TaskDetailModal = ({ task, open, onClose }: TaskDetailModalProps) => {
         .limit(1);
 
       if (fetchErr) throw fetchErr;
+
       if (!slots || slots.length === 0) {
-        toast.error("No slots available!");
+        // Fallback for legacy tasks without task_slots rows - use task review_text directly
+        if (task.slots_remaining > 0) {
+          // Decrement slots_remaining
+          await supabase.from("tasks").update({ slots_remaining: task.slots_remaining - 1 }).eq("id", task.id);
+          setBookedSlot({ review_text: task.review_text || "" } as any);
+          setStep(1);
+          queryClient.invalidateQueries({ queryKey: ["tasks"] });
+          toast.success("Slot booked! Complete the task now.");
+        } else {
+          toast.error("No slots available!");
+        }
         return;
       }
 
@@ -112,7 +123,7 @@ const TaskDetailModal = ({ task, open, onClose }: TaskDetailModalProps) => {
           assigned_at: new Date().toISOString(),
         })
         .eq("id", slot.id)
-        .eq("status", "available"); // ensure race condition safety
+        .eq("status", "available");
 
       if (updateErr) throw updateErr;
 

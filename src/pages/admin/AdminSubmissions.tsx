@@ -16,12 +16,19 @@ const AdminSubmissions = () => {
   const { data: submissions = [] } = useQuery({
     queryKey: ["admin-submissions"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: subs, error } = await supabase
         .from("task_submissions")
-        .select("*, profiles!task_submissions_user_id_fkey(name), tasks!task_submissions_task_id_fkey(title, reward, points, second_form_fields)")
+        .select("*, tasks(title, reward, points, second_form_fields)")
         .order("submitted_at", { ascending: false });
       if (error) throw error;
-      return data;
+      if (!subs || subs.length === 0) return [];
+      const userIds = [...new Set(subs.map((s: any) => s.user_id))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, name")
+        .in("user_id", userIds);
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p.name]));
+      return subs.map((s: any) => ({ ...s, user_name: profileMap.get(s.user_id) || "Unknown" }));
     },
   });
 
@@ -167,7 +174,7 @@ const AdminSubmissions = () => {
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground">{sub.profiles?.name || "Unknown"}</p>
+                  <p className="font-medium text-foreground">{sub.user_name || "Unknown"}</p>
                   <p className="text-xs text-muted-foreground">{sub.tasks?.title || "Unknown"}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{new Date(sub.submitted_at).toLocaleString()}</p>
                   {sub.comment && <p className="text-xs text-foreground mt-1">"{sub.comment}"</p>}
@@ -224,7 +231,7 @@ const AdminSubmissions = () => {
           {detailSub && (
             <div className="space-y-3 py-2">
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div><span className="text-muted-foreground">User:</span> <span className="text-foreground font-medium">{detailSub.profiles?.name}</span></div>
+                <div><span className="text-muted-foreground">User:</span> <span className="text-foreground font-medium">{detailSub.user_name}</span></div>
                 <div><span className="text-muted-foreground">Task:</span> <span className="text-foreground font-medium">{detailSub.tasks?.title}</span></div>
                 <div><span className="text-muted-foreground">Status:</span> <StatusBadge status={detailSub.status} /></div>
                 <div><span className="text-muted-foreground">Date:</span> <span className="text-foreground">{new Date(detailSub.submitted_at).toLocaleString()}</span></div>
