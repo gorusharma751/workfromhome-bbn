@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { LayoutDashboard, ListTodo, FileCheck, Users, Wallet, Settings, LogOut, Bell, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, ListTodo, FileCheck, Users, Wallet, Settings, LogOut, Bell, ArrowLeft, Tag, Package, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -7,6 +7,9 @@ const navItems = [
   { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { path: "/admin/tasks", label: "Tasks", icon: ListTodo },
   { path: "/admin/submissions", label: "Submissions", icon: FileCheck },
+  { path: "/admin/deals", label: "Deals", icon: Tag },
+  { path: "/admin/orders", label: "Orders", icon: Package },
+  { path: "/admin/refunds", label: "Refunds", icon: RotateCcw },
   { path: "/admin/users", label: "Users", icon: Users },
   { path: "/admin/referrals", label: "Referrals", icon: Settings },
   { path: "/admin/withdrawals", label: "Withdrawals", icon: Wallet },
