@@ -77,7 +77,15 @@ export const useAppSettings = (): AppSettings => {
               support_link: v.support_link || DEFAULT_TELEGRAM.support_link,
             });
           }
-        }
+          }
+
+          if (row.key === "announcement" && row.value) {
+            const v = row.value as Record<string, any>;
+            setAnnouncement({
+              text: v.text || "",
+              active: v.active !== false,
+            });
+          }
       }
     } catch (error) {
       console.error("Failed to load app settings", error);
