@@ -38,37 +38,73 @@ export type Database = {
       deals: {
         Row: {
           active: boolean
+          color_instruction: string | null
           created_at: string
-          deal_link: string | null
-          description: string | null
+          deal_price: number
           id: string
-          photo_url: string | null
-          price: number
-          rules: string | null
+          mediator_name: string | null
+          order_details_required: Json | null
+          order_form_link: string | null
+          photos: string[] | null
+          pp_price: number
+          product_link: string | null
+          rating_limit: string | null
+          refund_available_after_days: number | null
+          refund_form_link: string | null
+          refund_form_name: string | null
+          review_days: string | null
+          review_type: string | null
+          review_word_limit: string | null
+          rules: Json | null
+          slots_booked: number
           title: string
           total_slots: number
         }
         Insert: {
           active?: boolean
+          color_instruction?: string | null
           created_at?: string
-          deal_link?: string | null
-          description?: string | null
+          deal_price?: number
           id?: string
-          photo_url?: string | null
-          price?: number
-          rules?: string | null
+          mediator_name?: string | null
+          order_details_required?: Json | null
+          order_form_link?: string | null
+          photos?: string[] | null
+          pp_price?: number
+          product_link?: string | null
+          rating_limit?: string | null
+          refund_available_after_days?: number | null
+          refund_form_link?: string | null
+          refund_form_name?: string | null
+          review_days?: string | null
+          review_type?: string | null
+          review_word_limit?: string | null
+          rules?: Json | null
+          slots_booked?: number
           title: string
           total_slots?: number
         }
         Update: {
           active?: boolean
+          color_instruction?: string | null
           created_at?: string
-          deal_link?: string | null
-          description?: string | null
+          deal_price?: number
           id?: string
-          photo_url?: string | null
-          price?: number
-          rules?: string | null
+          mediator_name?: string | null
+          order_details_required?: Json | null
+          order_form_link?: string | null
+          photos?: string[] | null
+          pp_price?: number
+          product_link?: string | null
+          rating_limit?: string | null
+          refund_available_after_days?: number | null
+          refund_form_link?: string | null
+          refund_form_name?: string | null
+          review_days?: string | null
+          review_type?: string | null
+          review_word_limit?: string | null
+          rules?: Json | null
+          slots_booked?: number
           title?: string
           total_slots?: number
         }
